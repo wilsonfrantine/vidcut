@@ -1,4 +1,4 @@
-// server.js - Versão Corrigida com a flag -y do FFmpeg
+// server.js - VidCut (A simple tool to cut youtube video)
 
 const express = require('express');
 const cors = require('cors');
@@ -6,136 +6,169 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const multer = require('multer');
+const http = require('http');
+const fetch = require('node-fetch');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = 3000;
 
-// --- Configuração das Pastas ---
+// ========================================
+// DIRECTORIES
+// ========================================
 const UPLOAD_DIR = path.join(__dirname, 'videos');
 const OUTPUT_DIR = path.join(__dirname, 'output');
 
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR);
 
+// ========================================
+// FILE UPLOAD (MULTER)
+// ========================================
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  }
 });
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
+// ========================================
+// MIDDLEWARE
+// ========================================
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 app.use('/videos', express.static(UPLOAD_DIR));
 app.use('/output', express.static(OUTPUT_DIR));
 
-// Rota de Upload
+// ========================================
+// AUTO-UPDATE yt-dlp (SILENT, NO UI)
+// ========================================
+let updateChecked = false;
+
+function getCurrentVersion() {
+  return new Promise(resolve => {
+    exec('yt-dlp --version', (err, stdout) => {
+      resolve(err ? null : stdout.trim());
+    });
+  });
+}
+
+async function getLatestVersion() {
+  try {
+    const res = await fetch('https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest');
+    const data = await res.json();
+    return data.tag_name;
+  } catch (err) {
+    console.error('Failed to fetch latest version:', err.message);
+    return null;
+  }
+}
+
+async function checkForUpdate() {
+  if (updateChecked) return;
+  updateChecked = true;
+
+  const current = await getCurrentVersion();
+  const latest = await getLatestVersion();
+
+  console.log(`[UPDATE] Current: ${current} | Latest: ${latest}`);
+
+  if (current && latest && current !== latest) {
+    console.log(`UPDATING yt-dlp: ${current} → ${latest}`);
+    exec('pipx upgrade yt-dlp', (err, stdout, stderr) => {
+      if (err) {
+        console.error('Update failed:', stderr);
+        return;
+      }
+      console.log('yt-dlp updated. Restarting in 1s...');
+      setTimeout(() => process.exit(0), 1000);
+    });
+  } else {
+    console.log('yt-dlp is up to date.');
+  }
+}
+
+// ========================================
+// ROUTES
+// ========================================
+
+// Upload local video
 app.post('/upload', upload.single('videoFile'), (req, res) => {
-    if (!req.file) return res.status(400).send('Nenhum arquivo enviado.');
-    res.status(200).json({ message: 'Upload bem-sucedido!', filename: req.file.filename });
+  if (!req.file) return res.status(400).send('No file uploaded.');
+  res.json({ message: 'Upload successful!', filename: req.file.filename });
 });
 
-// Rota de Processamento
-// server.js -> ROTA CORRIGIDA
-
+// Download from YouTube
 app.post('/download-from-youtube', (req, res) => {
-    const { youtubeUrl } = req.body;
-    if (!youtubeUrl) {
-        return res.status(400).json({ message: 'URL do YouTube não fornecida.' });
+  const { youtubeUrl } = req.body;
+  if (!youtubeUrl) return res.status(400).json({ message: 'YouTube URL required.' });
+
+  const baseName = `yt_${Date.now()}`;
+  const outputPath = path.join(UPLOAD_DIR, `${baseName}.%(ext)s`);
+  const isWSL = process.platform === 'linux';
+
+  const command = isWSL
+    ? `yt-dlp -o "${outputPath}" -f "bv*+ba/b" "${youtubeUrl}"`
+    : `wsl yt-dlp -o "/mnt/${outputPath[0].toLowerCase()}${outputPath.slice(2).replace(/\\/g, '/')}" -f "bv*+ba/b" "${youtubeUrl}"`;
+
+  exec(command, (err, stdout, stderr) => {
+    if (err) {
+      console.error('yt-dlp error:', err.message);
+      return res.status(500).json({ message: 'Download failed.', error: stderr });
     }
 
-    // 1. Gera um nome de arquivo base, SEM extensão
-    const baseFilename = `yt_${Date.now()}`;
-    // O template para o yt-dlp agora usa a variável %(ext)s para a extensão correta
-    const outputPathTemplate = path.join(UPLOAD_DIR, `${baseFilename}.%(ext)s`);
+    const files = fs.readdirSync(UPLOAD_DIR);
+    const finalFile = files.find(f => f.startsWith(baseName));
+    if (!finalFile) return res.status(500).json({ message: 'File not found after download.' });
 
-    const IS_RUNNING_IN_WSL = process.platform === 'linux';
-    let command;
-
-    // 2. Remove a flag '--merge-output-format mp4' do comando
-    if (IS_RUNNING_IN_WSL) {
-        command = `yt-dlp -o "${outputPathTemplate}" -f "bv*+ba/b" "${youtubeUrl}"`;
-    } else {
-        const wslOutputPath = `/mnt/${outputPathTemplate.substring(0, 1).toLowerCase()}${outputPathTemplate.substring(2).replace(/\\/g, '/')}`;
-        command = `wsl yt-dlp -o "${wslOutputPath}" -f "bv*+ba/b" "${youtubeUrl}"`;
-    }
-    
-    console.log('Executando comando de download:', command);
-
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Erro ao baixar com yt-dlp: ${error.message}`);
-            return res.status(500).json({ message: 'Falha ao baixar vídeo do YouTube.', error: stderr });
-        }
-        
-        // 3. Descobre o nome COMPLETO do arquivo que foi criado
-        const files = fs.readdirSync(UPLOAD_DIR);
-        const finalFilename = files.find(f => f.startsWith(baseFilename));
-
-        if (!finalFilename) {
-            return res.status(500).json({ message: 'Erro: arquivo baixado não encontrado no servidor.' });
-        }
-
-        console.log(`Download concluído! Arquivo salvo como: ${finalFilename}`);
-        res.status(200).json({ message: 'Download concluído!', filename: finalFilename });
-    });
+    res.json({ message: 'Download complete!', filename: finalFile });
+  });
 });
 
+// Cut video
 app.post('/processar-video', (req, res) => {
-    const { videoPath, start, end } = req.body;
-    const inputFilePath = path.join(UPLOAD_DIR, videoPath);
-    const outputFilename = `corte_${videoPath}`;
-    const outputFilePath = path.join(OUTPUT_DIR, outputFilename);
+  const { videoPath, start, end } = req.body;
+  const inputPath = path.join(UPLOAD_DIR, videoPath);
+  const outputPath = path.join(OUTPUT_DIR, `cut_${videoPath}`);
 
-    if (!fs.existsSync(inputFilePath)) {
-        return res.status(404).json({ message: `Arquivo não encontrado no servidor: ${videoPath}` });
+  if (!fs.existsSync(inputPath)) {
+    return res.status(404).json({ message: `File not found: ${videoPath}` });
+  }
+
+  const isWSL = process.platform === 'linux';
+  const command = isWSL
+    ? `ffmpeg -y -i "${inputPath}" -ss ${start.toFixed(3)} -to ${end.toFixed(3)} -c copy "${outputPath}"`
+    : `wsl ffmpeg -y -i "/mnt/${inputPath[0].toLowerCase()}${inputPath.slice(2).replace(/\\/g, '/')}" -ss ${start.toFixed(3)} -to ${end.toFixed(3)} -c copy "/mnt/${outputPath[0].toLowerCase()}${outputPath.slice(2).replace(/\\/g, '/')}"`;
+
+  exec(command, (err, stdout, stderr) => {
+    if (err) {
+      console.error('FFmpeg error:', err.message);
+      return res.status(500).json({ message: 'Cut failed.', error: stderr });
     }
-
-    const IS_RUNNING_IN_WSL = process.platform === 'linux';
-    let command;
-
-    if (IS_RUNNING_IN_WSL) {
-        // CORREÇÃO: Adicionada a flag -y para sobrescrever sem perguntar
-        command = `ffmpeg -y -i "${inputFilePath}" -ss ${start.toFixed(3)} -to ${end.toFixed(3)} -c copy "${outputFilePath}"`;
-    } else {
-        const wslInputPath = `/mnt/${inputFilePath.substring(0, 1).toLowerCase()}${inputFilePath.substring(2).replace(/\\/g, '/')}`;
-        const wslOutputPath = `/mnt/${outputFilePath.substring(0, 1).toLowerCase()}${outputFilePath.substring(2).replace(/\\/g, '/')}`;
-        // CORREÇÃO: Adicionada a flag -y para sobrescrever sem perguntar
-        command = `wsl ffmpeg -y -i "${wslInputPath}" -ss ${start.toFixed(3)} -to ${end.toFixed(3)} -c copy "${wslOutputPath}"`;
-    }
-    
-    console.log('Executando comando:', command);
-    
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Erro ao executar comando: ${error.message}`);
-            console.error(`Stderr: ${stderr}`);
-            return res.status(500).json({ message: 'Falha ao processar o vídeo.', error: stderr });
-        }
-        res.status(200).json({ message: 'Vídeo processado com sucesso!', outputFile: outputFilename });
-    });
+    res.json({ message: 'Video cut successfully!', outputFile: `cut_${videoPath}` });
+  });
 });
 
-// Rotina de Limpeza
+// ========================================
+// CLEANUP ON EXIT
+// ========================================
 function cleanup() {
-    console.log('\nEncerrando servidor. Limpando pastas...');
-    try {
-        fs.rmSync(UPLOAD_DIR, { recursive: true, force: true });
-        fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
-        console.log('Pastas limpas com sucesso.');
-        fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-        fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    } catch (err) {
-        console.error('Erro ao limpar as pastas:', err);
-    }
-    process.exit();
+  console.log('Cleaning up directories...');
+  [UPLOAD_DIR, OUTPUT_DIR].forEach(dir => {
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(dir);
+  });
+  process.exit();
 }
 process.on('SIGINT', cleanup);
 
-// Iniciar Servidor
-app.listen(PORT, () => {
-    console.log(`Servidor rodando em: http://localhost:${PORT}`);
+// ========================================
+// START SERVER
+// ========================================
+server.listen(PORT, () => {
+  console.log(`VidCut running at http://localhost:${PORT}`);
+  setTimeout(checkForUpdate, 2000);
 });
