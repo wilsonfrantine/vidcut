@@ -15,8 +15,29 @@ The application runs locally using a Node.js server and provides a web-based int
 
 ## 🧰 Requirements
 
-- [Node.js](https://nodejs.org/) installed
-- [FFmpeg](https://ffmpeg.org/) available in your system `PATH`
+- [Node.js](https://nodejs.org/) 18+
+- [FFmpeg](https://ffmpeg.org/) (includes `ffprobe`), version 4 or newer
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) (only needed for web links), kept up to date
+
+VidCut does **not** install these automatically. On startup the server checks them and the web UI shows a warning with install commands if something is missing or outdated.
+
+| System | Install |
+|---|---|
+| Debian/Ubuntu | `sudo apt install ffmpeg` · `pipx install yt-dlp` |
+| Fedora | `sudo dnf install ffmpeg` · `pipx install yt-dlp` |
+| Arch | `sudo pacman -S ffmpeg yt-dlp` |
+| macOS | `brew install ffmpeg yt-dlp` |
+| Windows | The app runs the tools **inside WSL**: `wsl sudo apt install ffmpeg` · `wsl pipx install yt-dlp` |
+
+Update yt-dlp regularly (`pipx upgrade yt-dlp` / `brew upgrade yt-dlp`), as site changes often break old versions.
+
+Check your setup with `ffmpeg -version` and `yt-dlp --version`.
+
+If the binaries are outside your `PATH`, set `FFMPEG_PATH`, `FFPROBE_PATH` and/or `YTDLP_PATH`:
+
+```bash
+FFMPEG_PATH=/opt/ffmpeg/bin/ffmpeg npm start
+```
 
 ---
 
@@ -50,8 +71,10 @@ vidcut/
 │   ├── index.html    # Main interface
 │   ├── style.css     # UI styles
 │   ├── script.js     # Frontend logic
+│   ├── deps-banner.js # Missing/outdated dependency warning
 │   └── ui.js         # UI helper functions
 ├── server.js         # Node.js backend that runs FFmpeg
+├── deps.js           # Dependency detection (ffmpeg, ffprobe, yt-dlp)
 ├── package.json      # Project dependencies
 ```
 

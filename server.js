@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
 const multer = require('multer');
+const { USE_WSL, bin, checkDependencies } = require('./deps');
 
 const app = express();
 const PORT = 3000;
@@ -27,13 +28,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 function probeMedia(filePath, callback) {
-    const isWindows = process.platform !== 'linux';
+    const isWindows = USE_WSL;
     const probePath = isWindows
         ? `/mnt/${filePath.substring(0, 1).toLowerCase()}${filePath.substring(2).replace(/\\/g, '/')}`
         : filePath;
-    const command = isWindows ? 'wsl' : 'ffprobe';
+    const command = isWindows ? 'wsl' : bin.ffprobe;
     const args = isWindows
-        ? ['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height', '-of', 'json', probePath]
+        ? [bin.ffprobe, '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height', '-of', 'json', probePath]
         : ['-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height', '-of', 'json', probePath];
 
     execFile(command, args, { maxBuffer: 1024 * 1024 }, (error, stdout) => {
@@ -61,14 +62,14 @@ function probeMedia(filePath, callback) {
 }
 
 function createTrackAssets(filePath, mediaInfo, callback) {
-    const isWindows = process.platform !== 'linux';
+    const isWindows = USE_WSL;
     const toFfmpegPath = value => isWindows
         ? `/mnt/${value.substring(0, 1).toLowerCase()}${value.substring(2).replace(/\\/g, '/')}`
         : value;
     const inputPath = toFfmpegPath(filePath);
     const runFfmpeg = (args, done) => {
-        const command = isWindows ? 'wsl' : 'ffmpeg';
-        const commandArgs = isWindows ? ['ffmpeg', ...args] : args;
+        const command = isWindows ? 'wsl' : bin.ffmpeg;
+        const commandArgs = isWindows ? [bin.ffmpeg, ...args] : args;
         execFile(command, commandArgs, { maxBuffer: 1024 * 1024 }, error => done(error));
     };
     const stem = path.parse(filePath).name;
@@ -113,6 +114,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/videos', express.static(UPLOAD_DIR));
 app.use('/output', express.static(OUTPUT_DIR));
 
+// Verificação das dependências externas
+app.get('/api/dependencies', (req, res) => checkDependencies(report => res.json(report)));
+
 // Rota de Upload
 app.post('/upload', upload.single('videoFile'), (req, res) => {
     if (!req.file) return res.status(400).send('Nenhum arquivo enviado.');
@@ -137,17 +141,17 @@ app.post('/download-from-youtube', (req, res) => {
     const outputPathTemplate = path.join(UPLOAD_DIR, `${baseFilename}.%(ext)s`);
     const downloadArgs = ['-f', 'bv*+ba/b', '-o', outputPathTemplate, youtubeUrl];
 
-    const IS_RUNNING_IN_WSL = process.platform === 'linux';
+    const IS_RUNNING_IN_WSL = !USE_WSL;
     let command;
     let args;
 
     if (IS_RUNNING_IN_WSL) {
-        command = 'yt-dlp';
+        command = bin.ytdlp;
         args = downloadArgs;
     } else {
         const wslOutputPath = `/mnt/${outputPathTemplate.substring(0, 1).toLowerCase()}${outputPathTemplate.substring(2).replace(/\\/g, '/')}`;
         command = 'wsl';
-        args = ['yt-dlp', ...downloadArgs.map(arg => arg === outputPathTemplate ? wslOutputPath : arg)];
+        args = [bin.ytdlp, ...downloadArgs.map(arg => arg === outputPathTemplate ? wslOutputPath : arg)];
     }
 
     console.log('Executando comando de download:', command);
@@ -200,7 +204,7 @@ app.post('/processar-video', (req, res) => {
     }
 
     const duration = end - start;
-    const IS_RUNNING_IN_WSL = process.platform === 'linux';
+    const IS_RUNNING_IN_WSL = !USE_WSL;
     const preserveAudio = includeAudio !== false;
     const wslInputPath = `/mnt/${inputFilePath.substring(0, 1).toLowerCase()}${inputFilePath.substring(2).replace(/\\/g, '/')}`;
     const wslOutputPath = `/mnt/${outputFilePath.substring(0, 1).toLowerCase()}${outputFilePath.substring(2).replace(/\\/g, '/')}`;
@@ -221,8 +225,8 @@ app.post('/processar-video', (req, res) => {
         ffmpegArgs.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-movflags', '+faststart');
     }
     ffmpegArgs.push(outputPath);
-    const command = IS_RUNNING_IN_WSL ? 'ffmpeg' : 'wsl';
-    const args = IS_RUNNING_IN_WSL ? ffmpegArgs : ['ffmpeg', ...ffmpegArgs];
+    const command = IS_RUNNING_IN_WSL ? bin.ffmpeg : 'wsl';
+    const args = IS_RUNNING_IN_WSL ? ffmpegArgs : [bin.ffmpeg, ...ffmpegArgs];
 
     console.log('Executando comando:', command);
 
@@ -255,4 +259,10 @@ process.on('SIGINT', cleanup);
 // Iniciar Servidor
 app.listen(PORT, () => {
     console.log(`Servidor rodando em: http://localhost:${PORT}`);
+    checkDependencies(report => {
+        report.dependencies.filter(dep => dep.status !== 'ok').forEach(dep => {
+            console.warn(`[AVISO] ${dep.message}`);
+            (dep.hints[report.platform] || []).forEach(line => console.warn(`        ${line}`));
+        });
+    });
 });
