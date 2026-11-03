@@ -145,6 +145,23 @@ app.post('/upload', upload.single('videoFile'), (req, res) => {
     });
 });
 
+
+app.post('/limpar-sessao', (req, res) => {
+    try {
+        [UPLOAD_DIR, OUTPUT_DIR].forEach(dir => {
+            if (fs.existsSync(dir)) {
+                fs.readdirSync(dir).filter(name => name !== '.gitkeep').forEach(name => {
+                    fs.rmSync(path.join(dir, name), { recursive: true, force: true });
+                });
+            }
+        });
+        res.status(200).json({ message: 'Sessão e arquivos temporários limpos com sucesso.' });
+    } catch (err) {
+        console.error('Erro ao limpar sessão:', err);
+        res.status(500).json({ message: 'Falha ao limpar pastas temporárias.' });
+    }
+});
+
 // Rota de Processamento
 // server.js -> ROTA CORRIGIDA
 
@@ -253,7 +270,19 @@ app.post('/processar-video', (req, res) => {
             console.error(`Stderr: ${stderr}`);
             return res.status(500).json({ message: 'Falha ao processar o vídeo.', ...toolFailure(error, stderr, 'FFmpeg') });
         }
-        res.status(200).json({ message: 'Corte processado com sucesso!', outputFile: outputFilename, outputMode, audioIncluded: outputMode === 'audio' || preserveAudio, audioMuted: outputMode === 'video' && preserveAudio && muteAudio === true });
+                let fileSize = null;
+        try {
+            fileSize = fs.statSync(outputFilePath).size;
+        } catch (_) {}
+        res.status(200).json({ 
+            message: 'Corte processado com sucesso!', 
+            outputFile: outputFilename, 
+            outputMode, 
+            duration,
+            fileSize,
+            audioIncluded: outputMode === 'audio' || preserveAudio, 
+            audioMuted: outputMode === 'video' && preserveAudio && muteAudio === true 
+        });
     });
 });
 

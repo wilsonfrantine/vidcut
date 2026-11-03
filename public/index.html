@@ -32,6 +32,10 @@
                 <div class="section-heading"><span class="eyebrow">SEU PRÓXIMO CORTE COMEÇA AQUI</span><h2>Escolha um vídeo</h2>
                 <p>Selecione um arquivo do computador ou cole um link de vídeo de uma plataforma compatível.</p></div>
 
+                <div id="activeSessionBar" class="active-session-bar" style="display: none;">
+                    <span>Há um vídeo em edição com corte definido (<strong id="sessionVideoName"></strong>).</span>
+                    <button id="resumeEditButton" type="button" class="mark-button primary">Continuar editando →</button>
+                </div>
                 <div id="mode-selector">
                     <button class="mode-selector-btn active" data-mode="local" aria-pressed="true">
                         <span class="icon">▧</span> Arquivo local
@@ -148,7 +152,18 @@
                 <p id="resultDescription">Renderize o trecho selecionado para preparar seu arquivo.</p>
                 <button id="processButton" class="nav-button primary export-button" title="Renderizar e preparar o download">Preparar download</button>
                 <div id="statusArea" class="status-text" role="status" aria-live="polite"></div>
+                
+                <div id="resultPreviewContainer" class="result-preview-container" style="display:none;">
+                    <div id="resultMediaWrapper" class="result-media-wrapper"></div>
+                    <div id="resultMetaInfo" class="result-meta-info"></div>
+                </div>
+
                 <div id="downloadArea"></div>
+
+                <div id="resultActionButtons" class="result-action-buttons" style="display:none;">
+                    <button id="editAgainButton" type="button" class="nav-button secondary">↺ Fazer outro corte deste vídeo</button>
+                    <button id="newVideoButton" type="button" class="nav-button secondary">✚ Novo vídeo (Limpar sessão)</button>
+                </div>
 
                 <details class="command-details">
                     <summary>Detalhes técnicos</summary>

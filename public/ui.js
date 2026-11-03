@@ -30,6 +30,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = document.querySelectorAll('.app-view');
     const fileDropzone = document.getElementById('file-upload-area');
 
+    window.VidCutUI = {
+        setView,
+        resetTabs() {
+            viewTabs.forEach(tab => {
+                if (tab.dataset.viewTarget !== 'step-1-upload' && tab.dataset.viewTarget !== 'credits-view') {
+                    tab.disabled = true;
+                }
+            });
+            setView('step-1-upload');
+        }
+    };
+
     function setView(viewId) {
         const destination = document.getElementById(viewId);
         if (!destination || (['step-2-editor', 'step-3-result'].includes(viewId) && !VidCutApp.state.videoPath)) return;

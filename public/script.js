@@ -55,6 +55,15 @@ const VidCutApp = {
             audioWaveform: document.getElementById('audioWaveform'),
             videoPlayhead: document.getElementById('videoPlayhead'),
             audioPlayhead: document.getElementById('audioPlayhead'),
+            resultPreviewContainer: document.getElementById('resultPreviewContainer'),
+            resultMediaWrapper: document.getElementById('resultMediaWrapper'),
+            resultMetaInfo: document.getElementById('resultMetaInfo'),
+            resultActionButtons: document.getElementById('resultActionButtons'),
+            editAgainButton: document.getElementById('editAgainButton'),
+            newVideoButton: document.getElementById('newVideoButton'),
+            activeSessionBar: document.getElementById('activeSessionBar'),
+            sessionVideoName: document.getElementById('sessionVideoName'),
+            resumeEditButton: document.getElementById('resumeEditButton'),
             markStart: document.getElementById('markStart'),
             markEnd: document.getElementById('markEnd'),
             loopToggle: document.getElementById('loopToggle'),
@@ -74,6 +83,23 @@ const VidCutApp = {
         this.DOM.startTimeInput.addEventListener('change', () => this.handleTimeInputChange('start'));
         this.DOM.endTimeInput.addEventListener('change', () => this.handleTimeInputChange('end'));
         this.DOM.processButton.addEventListener('click', () => this.processVideo());
+        if (this.DOM.editAgainButton) {
+            this.DOM.editAgainButton.addEventListener('click', () => {
+                if (window.VidCutUI && window.VidCutUI.setView) {
+                    window.VidCutUI.setView('step-2-editor');
+                }
+            });
+        }
+        if (this.DOM.newVideoButton) {
+            this.DOM.newVideoButton.addEventListener('click', () => this.resetSession());
+        }
+        if (this.DOM.resumeEditButton) {
+            this.DOM.resumeEditButton.addEventListener('click', () => {
+                if (window.VidCutUI && window.VidCutUI.setView) {
+                    window.VidCutUI.setView('step-2-editor');
+                }
+            });
+        }
         this.DOM.markStart.addEventListener('click', () => this.markBoundary('start'));
         this.DOM.markEnd.addEventListener('click', () => this.markBoundary('end'));
         this.DOM.loopToggle.addEventListener('click', () => this.toggleLoop());
@@ -272,6 +298,7 @@ const VidCutApp = {
         this.DOM.videoPlayer.load();
         this.DOM.videoContainer.style.display = 'block';
         this.DOM.controls.style.display = 'block';
+        this.updateSessionBanner();
         document.dispatchEvent(new CustomEvent('videoUploaded'));
     },
 
@@ -465,14 +492,92 @@ const VidCutApp = {
     displayResults(result) {
         this.DOM.statusArea.innerText = 'Corte concluído!';
         this.DOM.statusArea.style.color = 'var(--success-color)';
+        
+        // Exibir player de prévia do corte
+        if (this.DOM.resultPreviewContainer && this.DOM.resultMediaWrapper) {
+            this.DOM.resultMediaWrapper.innerHTML = '';
+            const isAudio = result.outputMode === 'audio';
+            const mediaEl = document.createElement(isAudio ? 'audio' : 'video');
+            mediaEl.controls = true;
+            mediaEl.src = `/output/${encodeURIComponent(result.outputFile)}`;
+            mediaEl.className = isAudio ? 'result-audio-player' : 'result-video-player';
+            this.DOM.resultMediaWrapper.appendChild(mediaEl);
+            
+            // Metadados (Tamanho e Duração)
+            const metaParts = [];
+            if (result.duration) {
+                metaParts.push(`Duração: <strong>${this.formatTime(result.duration)}</strong>`);
+            }
+            if (result.fileSize) {
+                metaParts.push(`Tamanho: <strong>${this.formatFileSize(result.fileSize)}</strong>`);
+            }
+            if (this.DOM.resultMetaInfo) {
+                this.DOM.resultMetaInfo.innerHTML = metaParts.length ? metaParts.join(' &nbsp;·&nbsp; ') : '';
+            }
+            this.DOM.resultPreviewContainer.style.display = 'block';
+        }
+
+        // Botão de download
         this.DOM.downloadArea.innerHTML = '';
         const downloadLink = document.createElement('a');
-        downloadLink.href = `/output/${result.outputFile}`;
-        downloadLink.innerText = this.state.outputMode === 'audio' ? 'Baixar MP3' : 'Baixar vídeo';
+        downloadLink.href = `/output/${encodeURIComponent(result.outputFile)}`;
+        downloadLink.innerText = this.state.outputMode === 'audio' ? '⬇ Baixar MP3' : '⬇ Baixar vídeo';
         downloadLink.setAttribute('download', result.outputFile);
         downloadLink.className = 'download-button';
         this.DOM.downloadArea.appendChild(downloadLink);
         this.DOM.downloadArea.style.display = 'block';
+
+        // Botões de ação subsequente
+        if (this.DOM.resultActionButtons) {
+            this.DOM.resultActionButtons.style.display = 'flex';
+        }
+        this.updateSessionBanner();
+    },
+
+    updateSessionBanner() {
+        if (!this.DOM.activeSessionBar) return;
+        if (this.state.videoPath) {
+            this.DOM.activeSessionBar.style.display = 'flex';
+            if (this.DOM.sessionVideoName) {
+                this.DOM.sessionVideoName.textContent = `${this.state.videoPath} (${this.formatTime(this.state.start)} - ${this.formatTime(this.state.end)})`;
+            }
+        } else {
+            this.DOM.activeSessionBar.style.display = 'none';
+        }
+    },
+
+    async resetSession() {
+        if (!confirm('Deseja descartar o vídeo atual e limpar os arquivos temporários do servidor?')) return;
+        
+        try {
+            await fetch('/limpar-sessao', { method: 'POST' });
+        } catch (_) {}
+
+        this.state.videoPath = null;
+        this.state.videoDuration = 0;
+        this.state.start = 0;
+        this.state.end = 0;
+        this.state.hasAudioTrack = false;
+        
+        if (this.DOM.videoPlayer) {
+            this.DOM.videoPlayer.pause();
+            this.DOM.videoPlayer.removeAttribute('src');
+            this.DOM.videoPlayer.load();
+        }
+        if (this.DOM.videoContainer) this.DOM.videoContainer.style.display = 'none';
+        if (this.DOM.controls) this.DOM.controls.style.display = 'none';
+        if (this.DOM.downloadArea) this.DOM.downloadArea.style.display = 'none';
+        if (this.DOM.resultPreviewContainer) this.DOM.resultPreviewContainer.style.display = 'none';
+        if (this.DOM.resultActionButtons) this.DOM.resultActionButtons.style.display = 'none';
+        if (this.DOM.videoFile) this.DOM.videoFile.value = '';
+        const ytInput = document.getElementById('youtubeUrlInput');
+        if (ytInput) ytInput.value = '';
+        this.setLoadingState(false, '');
+        this.updateSessionBanner();
+
+        if (window.VidCutUI && window.VidCutUI.resetTabs) {
+            window.VidCutUI.resetTabs();
+        }
     },
 
     setOutputMode(mode) {
