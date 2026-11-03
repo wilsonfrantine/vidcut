@@ -31,7 +31,7 @@ cd vidcut
 npm install
 
 # Start the server
-node server.js
+npm start
 ```
 
 Then open your browser and go to:
@@ -46,10 +46,11 @@ http://localhost:3000
 
 ```
 vidcut/
-├── index.html        # Main interface
-├── style.css         # UI styles
-├── script.js         # Frontend logic
-├── ui.js             # UI helper functions
+├── public/           # Static files served to the browser
+│   ├── index.html    # Main interface
+│   ├── style.css     # UI styles
+│   ├── script.js     # Frontend logic
+│   └── ui.js         # UI helper functions
 ├── server.js         # Node.js backend that runs FFmpeg
 ├── package.json      # Project dependencies
 ```

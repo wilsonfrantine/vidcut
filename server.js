@@ -109,7 +109,7 @@ function createTrackAssets(filePath, mediaInfo, callback) {
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/videos', express.static(UPLOAD_DIR));
 app.use('/output', express.static(OUTPUT_DIR));
 
