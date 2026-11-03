@@ -1,6 +1,6 @@
 // script.js - Final Refactored Version
 
-const ClipCraftApp = {
+const VidCutApp = {
     // App State
     state: {
         start: 0,
@@ -147,7 +147,7 @@ const ClipCraftApp = {
                 body: formData,
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'Falha ao enviar o arquivo.');
+            if (!response.ok) throw new Error(this.errorText(result, 'Falha ao enviar o arquivo.'));
 
             this.handleSuccessfulLoad(result);
         } catch (error) {
@@ -167,7 +167,7 @@ const ClipCraftApp = {
                 body: JSON.stringify({ youtubeUrl: url })
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'Falha ao baixar o vídeo deste link.');
+            if (!response.ok) throw new Error(this.errorText(result, 'Falha ao baixar o vídeo deste link.'));
 
             this.handleSuccessfulLoad(result);
         } catch (error) {
@@ -212,7 +212,7 @@ const ClipCraftApp = {
                 })
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'Ocorreu um erro no servidor.');
+            if (!response.ok) throw new Error(this.errorText(result, 'Ocorreu um erro no servidor.'));
 
             this.displayResults(result);
 
@@ -362,7 +362,7 @@ const ClipCraftApp = {
             return;
         }
         const duration = this.state.end - this.state.start;
-        const outputFilename = `corte_${this.state.videoPath.replace(/\.[^.]+$/, '')}.mp4`;
+        const outputFilename = `corte_${this.state.videoPath.replace(/\.[^.]+$/, '')}_${Math.round(this.state.start * 1000)}-${Math.round(this.state.end * 1000)}.mp4`;
         const cmd = this.state.outputMode === 'audio'
             ? `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -vn -map 0:a:0 -c:a libmp3lame -q:a 2 "${outputFilename.replace(/\.mp4$/, '.mp3')}"`
             : `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -map 0:v:0 ${this.state.includeAudio ? `-map 0:a? ${this.state.audioMuted ? '-af volume=0 ' : ''}-c:a aac -b:a 192k` : '-an'} -c:v libx264 -preset veryfast -crf 18 -movflags +faststart "${outputFilename}"`;
@@ -459,6 +459,10 @@ const ClipCraftApp = {
         if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     },
+    errorText(result, fallback) {
+        const message = result.message || fallback;
+        return result.detail ? `${message} (${result.detail})` : message;
+    },
     escapeHtml(value) {
         return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
     },
@@ -474,4 +478,4 @@ const ClipCraftApp = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => ClipCraftApp.init());
+document.addEventListener('DOMContentLoaded', () => VidCutApp.init());

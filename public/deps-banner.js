@@ -4,7 +4,21 @@
     const PLATFORM_NAMES = { linux: 'Linux', macos: 'macOS', windows: 'Windows' };
     const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+    // Sem yt-dlp a aba "Link da web" não funciona: desabilita e volta para arquivo local.
+    function applyLinkAvailability(report) {
+        const ytdlp = report.dependencies.find(dep => dep.id === 'ytdlp');
+        const button = document.querySelector('.mode-selector-btn[data-mode="youtube"]');
+        if (!button || !ytdlp) return;
+        const missing = ytdlp.status === 'missing';
+        button.disabled = missing;
+        button.title = missing ? 'Indisponível: yt-dlp não encontrado (veja o aviso no topo)' : '';
+        if (missing && button.classList.contains('active')) {
+            document.querySelector('.mode-selector-btn[data-mode="local"]').click();
+        }
+    }
+
     function render(report) {
+        applyLinkAvailability(report);
         const old = document.getElementById('deps-banner');
         if (old) old.remove();
         const problems = report.dependencies.filter(dep => dep.status !== 'ok');

@@ -1,39 +1,40 @@
-# 📼 VidCut – Simple Video Cutter
+# 📼 VidCut – Cortador de vídeo simples
 
-**VidCut** is a local and minimalist tool for cutting simple segments from video files.  
-The application runs locally using a Node.js server and provides a web-based interface accessible through your browser.
-
----
-
-## ✨ Features
-
-- Cut video segments based on start and end time.
-- Simple and intuitive web interface.
-- Local processing using FFmpeg.
+**VidCut** é uma ferramenta local e minimalista para cortar trechos de vídeos (ou extrair o áudio em MP3).
+O aplicativo roda localmente com um servidor Node.js e oferece uma interface web acessível pelo navegador. Tudo é processado na sua máquina.
 
 ---
 
-## 🧰 Requirements
+## ✨ Recursos
+
+- Corte por tempo de início e fim, com linha do tempo e prévia.
+- Exportação em vídeo (MP4) ou somente áudio (MP3), com opção de silenciar ou remover o áudio.
+- Envio de arquivo local ou download a partir de um link (via yt-dlp).
+- Processamento local com FFmpeg, sem depender de serviços externos.
+
+---
+
+## 🧰 Requisitos
 
 - [Node.js](https://nodejs.org/) 18+
-- [FFmpeg](https://ffmpeg.org/) (includes `ffprobe`), version 4 or newer
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) (only needed for web links), kept up to date
+- [FFmpeg](https://ffmpeg.org/) (inclui o `ffprobe`), versão 4 ou superior
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) (necessário apenas para links da web), mantido atualizado
 
-VidCut does **not** install these automatically. On startup the server checks them and the web UI shows a warning with install commands if something is missing or outdated.
+O VidCut **não instala** essas ferramentas automaticamente. Ao iniciar, o servidor as verifica, e a interface exibe um aviso com os comandos de instalação se algo estiver ausente ou desatualizado.
 
-| System | Install |
+| Sistema | Instalação |
 |---|---|
 | Debian/Ubuntu | `sudo apt install ffmpeg` · `pipx install yt-dlp` |
 | Fedora | `sudo dnf install ffmpeg` · `pipx install yt-dlp` |
 | Arch | `sudo pacman -S ffmpeg yt-dlp` |
 | macOS | `brew install ffmpeg yt-dlp` |
-| Windows | The app runs the tools **inside WSL**: `wsl sudo apt install ffmpeg` · `wsl pipx install yt-dlp` |
+| Windows | O app executa as ferramentas **dentro do WSL**: `wsl sudo apt install ffmpeg` · `wsl pipx install yt-dlp` |
 
-Update yt-dlp regularly (`pipx upgrade yt-dlp` / `brew upgrade yt-dlp`), as site changes often break old versions.
+Atualize o yt-dlp com frequência (`pipx upgrade yt-dlp` / `brew upgrade yt-dlp`), pois mudanças nos sites costumam quebrar versões antigas.
 
-Check your setup with `ffmpeg -version` and `yt-dlp --version`.
+Confira a instalação com `ffmpeg -version` e `yt-dlp --version`.
 
-If the binaries are outside your `PATH`, set `FFMPEG_PATH`, `FFPROBE_PATH` and/or `YTDLP_PATH`:
+Se os executáveis estiverem fora do `PATH`, defina `FFMPEG_PATH`, `FFPROBE_PATH` e/ou `YTDLP_PATH`:
 
 ```bash
 FFMPEG_PATH=/opt/ffmpeg/bin/ffmpeg npm start
@@ -41,53 +42,66 @@ FFMPEG_PATH=/opt/ffmpeg/bin/ffmpeg npm start
 
 ---
 
-## 🚀 Installation & Usage
+## 🚀 Instalação e uso
 
 ```bash
-# Clone this repository
+# Clone este repositório
 git clone https://github.com/your-username/vidcut.git
 cd vidcut
 
-# Install dependencies
+# Instale as dependências
 npm install
 
-# Start the server
+# Inicie o servidor
 npm start
 ```
 
-Then open your browser and go to:
+Depois abra no navegador:
 
 ```
 http://localhost:3000
 ```
 
+Use `npm run dev` para reiniciar o servidor automaticamente ao editar o código.
+
 ---
 
-## 📂 Project Structure
+## 📂 Estrutura do projeto
 
 ```
 vidcut/
-├── public/           # Static files served to the browser
-│   ├── index.html    # Main interface
-│   ├── style.css     # UI styles
-│   ├── script.js     # Frontend logic
-│   ├── deps-banner.js # Missing/outdated dependency warning
-│   └── ui.js         # UI helper functions
-├── server.js         # Node.js backend that runs FFmpeg
-├── deps.js           # Dependency detection (ffmpeg, ffprobe, yt-dlp)
-├── package.json      # Project dependencies
+├── public/             # Arquivos estáticos servidos ao navegador
+│   ├── index.html      # Interface principal
+│   ├── style.css       # Estilos
+│   ├── script.js       # Lógica do front-end
+│   ├── ui.js           # Funções auxiliares de interface
+│   ├── deps-banner.js  # Aviso de dependências ausentes/desatualizadas
+│   ├── support.js      # Opções de apoio (exibidas só se configuradas)
+│   └── config.js       # Configuração opcional da interface
+├── videos/             # Vídeos enviados/baixados (conteúdo ignorado pelo Git)
+├── output/             # Cortes gerados (conteúdo ignorado pelo Git)
+├── server.js           # Backend Node.js que executa o FFmpeg
+├── deps.js             # Detecção de dependências (ffmpeg, ffprobe, yt-dlp)
+└── package.json        # Dependências do projeto
 ```
 
----
-
-## ⚠️ Notes
-
-- The input video must be available locally on the user's system.
-- FFmpeg must be properly installed and accessible via terminal (`ffmpeg -version`).
+As pastas `videos/` e `output/` são esvaziadas ao encerrar o servidor com Ctrl+C.
 
 ---
 
-## 📄 License
+## ⚙️ Configuração opcional
 
-This project is free to use for personal purposes. Contributions are welcome.
+Em `public/config.js` é possível informar um link do PayPal e/ou uma chave Pix. Se ficarem vazios, as opções de apoio não aparecem.
 
+---
+
+## ⚠️ Observações
+
+- O vídeo de entrada precisa estar disponível localmente ou acessível por link.
+- O FFmpeg deve estar instalado e acessível pelo terminal.
+
+---
+
+## 📄 Licença
+
+Uso livre para fins pessoais. Contribuições são bem-vindas.

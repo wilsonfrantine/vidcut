@@ -4,21 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-    <title>ClipCraft — Editor de vídeo</title>
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/5764/5764196.png">
+    <title>VidCut — Editor de vídeo</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" />
+    <link rel="stylesheet" href="vendor/nouislider/nouislider.min.css" />
     <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
     <nav class="top-nav">
         <div class="header-content">
-            <img src="https://cdn-icons-png.flaticon.com/512/5764/5764196.png" alt="ClipCraft Logo" class="logo">
-            <h1>ClipCraft<span>STUDIO</span></h1>
+            <img src="logo.svg" alt="VidCut Logo" class="logo">
+            <h1>VidCut<span>STUDIO</span></h1>
         </div>
         <nav class="top-tabs" aria-label="Navegação principal">
             <button class="tab-button active" data-view-target="step-1-upload" aria-current="page">Origem</button>
@@ -136,20 +133,20 @@
        <section id="credits-view" class="app-view credits-view">
             <div class="step-content">
                 <span class="eyebrow">CRÉDITOS</span>
-                <h2>Apoie o ClipCraft</h2>
+                <h2>Apoie o VidCut</h2>
                 <p>Este projeto é gratuito. Se ele foi útil para você, considere apoiar o seu desenvolvimento.</p>
 
                 <div class="support-wrapper">
                     <div class="support-option">
                         <h3>Outras localidades</h3>
-                        <a href="#" target="_blank" rel="noopener noreferrer" class="nav-button primary support-button paypal">
+                        <a id="paypalButton" href="#" target="_blank" rel="noopener noreferrer" class="nav-button primary support-button paypal">
                             <svg viewBox="0 0 24 24" fill="currentColor" height="1em" width="1em"><path d="M7.358 3.056H16.4c.42 0 .768.125 1.042.373.274.248.411.58.411 1.002v1.5H9.366c-.63 0-1.168.188-1.616.562-.448.375-.672.88-.672 1.516s.214 1.125.642 1.5s.96.563 1.6.563h.852c.622 0 1.15.188 1.588.563.438.375.657.88.657 1.515s-.223 1.125-.668 1.501c-.446.375-.99.562-1.63.562h-4.32c-.42 0-.768-.125-1.042-.373s-.41-.58-.41-1.002v-1.5H14.63c.63 0 1.168-.188 1.616-.563.448-.375.672-.88.672-1.515s-.214-1.125-.642-1.5s-.96-.563-1.6-.563h-.852c-.622 0-1.15-.188-1.588-.563-.438-.375-.657-.88-.657-1.515s.223-1.125.668-1.5c.446-.376.99-.563 1.63-.563h4.32c.42 0 .768.125 1.042.373s.41.58.41 1.002v2.875c0 .76-.237 1.41-.711 1.954s-1.053.816-1.737.816H7.358c-.76 0-1.412-.238-1.958-.713S4.69 16.71 4.69 15.95V4.43c0-.76.238-1.41.713-1.954C5.878 2.238 6.53 2 7.218 2h9.18c.76 0 1.412.238 1.958.713.546.474.819 1.125.819 1.957v.938h-2.146V4.058c0-.42-.138-.752-.412-1.002S17.8 2.68 17.38 2.68H7.218c-.42 0-.752.137-1.002.412s-.375.625-.375 1.042v.938h2.146V3.056z" /></svg>
                             Apoiar via PayPal
                         </a>
                     </div>
                     <div class="support-option">
                         <h3>Você está no Brasil?</h3>
-                         <button class="nav-button primary support-button pix" onclick="alert('My PIX key is: SUA-CHAVE-PIX')">
+                         <button id="pixButton" class="nav-button primary support-button pix">
                            <svg viewBox="0 0 24 24" fill="currentColor" height="1em" width="1em"><path d="M12.383 3.083l-7.394 4.195a1.144 1.144 0 00-.583.997v8.423c0 .41.22.793.583.997l7.394 4.195c.34.193.753.193 1.094 0l7.394-4.195c.364-.204.583-.588.583-.997V8.275a1.144 1.144 0 00-.583-.997L13.477 3.083a1.268 1.268 0 00-1.094 0zm-1.094 16.14l-6.81-3.86v-7.46l6.81-3.861v15.18zM10.8 7.373v4.205c0 .48.303.904.76.904h1.74a.79.79 0 00.79-.79V7.373a.79.79 0 00-.79-.79h-1.74a.76.76 0 00-.76.79zm-2.074 4.88c-.64.08-1.28.31-1.28 1.28v1.36c0 .97.64 1.2 1.28 1.28.64.08 1.28-.15 1.28-1.28v-1.36c0-1.13-.64-1.2-1.28-1.28zm8.614-.08c-.64.08-1.28.31-1.28 1.28v1.36c0 .97.64 1.2 1.28 1.28.64.08 1.28-.15 1.28-1.28v-1.36c0-1.13-.64-1.2-1.28-1.28z" /></svg>
                             Apoiar via Pix
                         </button>
@@ -163,9 +160,11 @@
         </section>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+    <script src="vendor/nouislider/nouislider.min.js"></script>
+    <script src="config.js"></script>
     <script src="script.js"></script>
     <script src="ui.js"></script>
+    <script src="support.js"></script>
     <script src="deps-banner.js"></script>
 
 </body>

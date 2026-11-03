@@ -1,9 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
 
 :root {
     color-scheme: light;
-    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-display: 'Manrope', var(--font-sans);
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-display: var(--font-sans);
     --bg-color: #f5f6fa;
     --panel-color: #ffffff;
     --text-primary: #171a2b;
@@ -277,3 +276,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 #deps-banner details { margin: 4px 0; }
 #deps-banner summary { cursor: pointer; font-weight: 600; }
 #deps-banner pre { margin: 6px 0; padding: 10px; overflow-x: auto; border-radius: 8px; background: rgba(0,0,0,.18); font-size: 12.5px; }
+
+.mode-selector-btn:disabled { opacity: .45; cursor: not-allowed; }

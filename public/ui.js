@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setView(viewId) {
         const destination = document.getElementById(viewId);
-        if (!destination || (['step-2-editor', 'step-3-result'].includes(viewId) && !ClipCraftApp.state.videoPath)) return;
+        if (!destination || (['step-2-editor', 'step-3-result'].includes(viewId) && !VidCutApp.state.videoPath)) return;
 
         views.forEach(view => view.classList.toggle('active', view.id === viewId));
         viewTabs.forEach(tab => {
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 option.setAttribute('aria-pressed', String(selected));
             });
 
-            ClipCraftApp.state.currentMode = button.dataset.mode;
+            VidCutApp.state.currentMode = button.dataset.mode;
             const isLocal = button.dataset.mode === 'local';
             localFileArea.style.display = isLocal ? 'block' : 'none';
             youtubeLinkArea.style.display = isLocal ? 'none' : 'block';
@@ -75,25 +75,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const link = value.trim();
         if (!isMediaUrl(link)) return false;
         youtubeUrlInput.value = link;
-        ClipCraftApp.setLoadingState(false, 'Link colado. Escolha o formato e clique em “Baixar para editar”.', 'var(--success-color)');
+        VidCutApp.setLoadingState(false, 'Link colado. Escolha o formato e clique em “Baixar para editar”.', 'var(--success-color)');
         return true;
     }
 
     document.addEventListener('paste', event => {
-        if (ClipCraftApp.state.currentMode !== 'youtube') return;
+        if (VidCutApp.state.currentMode !== 'youtube') return;
         const text = event.clipboardData?.getData('text/plain') || '';
         if (applyPastedLink(text)) event.preventDefault();
     });
 
     document.addEventListener('keydown', async event => {
-        if (ClipCraftApp.state.currentMode !== 'youtube' || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'v') return;
+        if (VidCutApp.state.currentMode !== 'youtube' || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'v') return;
         if (event.target === youtubeUrlInput) return;
         try {
             const text = await navigator.clipboard.readText();
             if (applyPastedLink(text)) event.preventDefault();
         } catch {
             youtubeUrlInput.focus();
-            ClipCraftApp.setLoadingState(false, 'Cole o link da mídia neste campo usando Ctrl+V.', 'var(--text-secondary)');
+            VidCutApp.setLoadingState(false, 'Cole o link da mídia neste campo usando Ctrl+V.', 'var(--text-secondary)');
         }
     });
 
@@ -101,22 +101,22 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const text = await navigator.clipboard.readText();
             if (!applyPastedLink(text)) {
-                ClipCraftApp.setLoadingState(false, 'A área de transferência não contém uma URL HTTP ou HTTPS válida.', 'red');
+                VidCutApp.setLoadingState(false, 'A área de transferência não contém uma URL HTTP ou HTTPS válida.', 'red');
             }
         } catch {
             youtubeUrlInput.focus();
-            ClipCraftApp.setLoadingState(false, 'Permita o acesso à área de transferência ou cole com Ctrl+V.', 'red');
+            VidCutApp.setLoadingState(false, 'Permita o acesso à área de transferência ou cole com Ctrl+V.', 'red');
         }
     });
 
     loadYoutubeButton.addEventListener('click', () => {
         const url = youtubeUrlInput.value.trim();
         if (!isMediaUrl(url)) {
-            ClipCraftApp.setLoadingState(false, 'Cole uma URL HTTP ou HTTPS válida para continuar.', 'red');
+            VidCutApp.setLoadingState(false, 'Cole uma URL HTTP ou HTTPS válida para continuar.', 'red');
             youtubeUrlInput.focus();
             return;
         }
-        ClipCraftApp.downloadFromYouTube(url);
+        VidCutApp.downloadFromYouTube(url);
     });
 
     fileDropzone.addEventListener('dragover', event => {
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const transfer = new DataTransfer();
         transfer.items.add(file);
         videoFile.files = transfer.files;
-        ClipCraftApp.handleFileUpload({ target: videoFile });
+        VidCutApp.handleFileUpload({ target: videoFile });
     });
 
     document.querySelectorAll('a[href^="#"]').forEach(link => {

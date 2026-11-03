@@ -27,6 +27,21 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+// Resume o stderr de uma ferramenta externa em poucas palavras úteis para o usuário.
+function summarizeStderr(stderr) {
+    const lines = String(stderr || '').trim().split(/\r?\n/).filter(Boolean);
+    const errors = lines.filter(line => /error/i.test(line));
+    return (errors.length ? errors : lines).slice(-2).join(' ').slice(0, 300);
+}
+
+// Mensagem específica quando o executável não existe; caso contrário devolve o resumo do stderr.
+function toolFailure(error, stderr, toolName) {
+    if (error && error.code === 'ENOENT') {
+        return { message: `${toolName} não está instalado ou não foi encontrado. Consulte o aviso de dependências no topo da página.` };
+    }
+    return { detail: summarizeStderr(stderr) };
+}
+
 function probeMedia(filePath, callback) {
     const isWindows = USE_WSL;
     const probePath = isWindows
@@ -111,6 +126,7 @@ function createTrackAssets(filePath, mediaInfo, callback) {
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/vendor/nouislider', express.static(path.join(__dirname, 'node_modules', 'nouislider', 'dist')));
 app.use('/videos', express.static(UPLOAD_DIR));
 app.use('/output', express.static(OUTPUT_DIR));
 
@@ -121,7 +137,7 @@ app.get('/api/dependencies', (req, res) => checkDependencies(report => res.json(
 app.post('/upload', upload.single('videoFile'), (req, res) => {
     if (!req.file) return res.status(400).send('Nenhum arquivo enviado.');
     probeMedia(req.file.path, (error, mediaInfo) => {
-        if (error) return res.status(422).json({ message: 'Não foi possível ler as trilhas deste arquivo. Verifique se o FFprobe está instalado e tente outro vídeo.' });
+        if (error) return res.status(422).json({ message: 'Não foi possível ler as trilhas deste arquivo. Verifique se o FFprobe está instalado e tente outro vídeo.', ...toolFailure(error, error.message, 'FFprobe') });
         if (!mediaInfo.hasVideo) return res.status(422).json({ message: 'Este arquivo não contém uma trilha de vídeo.' });
         createTrackAssets(req.file.path, mediaInfo, enrichedMediaInfo => {
             res.status(200).json({ message: 'Upload bem-sucedido!', filename: req.file.filename, mediaInfo: enrichedMediaInfo });
@@ -159,7 +175,7 @@ app.post('/download-from-youtube', (req, res) => {
     execFile(command, args, (error, stdout, stderr) => {
         if (error) {
             console.error(`Erro ao baixar com yt-dlp: ${error.message}`);
-            return res.status(500).json({ message: 'Falha ao baixar vídeo deste link. Verifique se a URL é compatível e acessível.', error: stderr });
+            return res.status(500).json({ message: 'Falha ao baixar vídeo deste link. Verifique se a URL é compatível e acessível.', ...toolFailure(error, stderr, 'yt-dlp') });
         }
 
         // 3. Descobre o nome COMPLETO do arquivo que foi criado
@@ -196,7 +212,8 @@ app.post('/processar-video', (req, res) => {
         return res.status(400).json({ message: 'Selecione uma faixa de áudio para exportar somente o áudio.' });
     }
     const inputFilePath = path.join(UPLOAD_DIR, videoPath);
-    const outputFilename = `corte_${path.parse(videoPath).name}.${outputMode === 'audio' ? 'mp3' : 'mp4'}`;
+    // O nome inclui o intervalo para que cortes diferentes do mesmo vídeo não se sobrescrevam.
+    const outputFilename = `corte_${path.parse(videoPath).name}_${Math.round(start * 1000)}-${Math.round(end * 1000)}.${outputMode === 'audio' ? 'mp3' : 'mp4'}`;
     const outputFilePath = path.join(OUTPUT_DIR, outputFilename);
 
     if (!fs.existsSync(inputFilePath)) {
@@ -234,7 +251,7 @@ app.post('/processar-video', (req, res) => {
         if (error) {
             console.error(`Erro ao executar comando: ${error.message}`);
             console.error(`Stderr: ${stderr}`);
-            return res.status(500).json({ message: 'Falha ao processar o vídeo.', error: stderr });
+            return res.status(500).json({ message: 'Falha ao processar o vídeo.', ...toolFailure(error, stderr, 'FFmpeg') });
         }
         res.status(200).json({ message: 'Corte processado com sucesso!', outputFile: outputFilename, outputMode, audioIncluded: outputMode === 'audio' || preserveAudio, audioMuted: outputMode === 'video' && preserveAudio && muteAudio === true });
     });
@@ -244,11 +261,12 @@ app.post('/processar-video', (req, res) => {
 function cleanup() {
     console.log('\nEncerrando servidor. Limpando pastas...');
     try {
-        fs.rmSync(UPLOAD_DIR, { recursive: true, force: true });
-        fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
+        // Esvazia as pastas preservando a estrutura e o .gitkeep
+        [UPLOAD_DIR, OUTPUT_DIR].forEach(dir => {
+            fs.mkdirSync(dir, { recursive: true });
+            fs.readdirSync(dir).filter(name => name !== '.gitkeep').forEach(name => fs.rmSync(path.join(dir, name), { recursive: true, force: true }));
+        });
         console.log('Pastas limpas com sucesso.');
-        fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-        fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     } catch (err) {
         console.error('Erro ao limpar as pastas:', err);
     }
