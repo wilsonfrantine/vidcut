@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const multer = require('multer');
 
 const app = express();
@@ -26,6 +26,87 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+function probeMedia(filePath, callback) {
+    const isWindows = process.platform !== 'linux';
+    const probePath = isWindows
+        ? `/mnt/${filePath.substring(0, 1).toLowerCase()}${filePath.substring(2).replace(/\\/g, '/')}`
+        : filePath;
+    const command = isWindows ? 'wsl' : 'ffprobe';
+    const args = isWindows
+        ? ['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height', '-of', 'json', probePath]
+        : ['-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height', '-of', 'json', probePath];
+
+    execFile(command, args, { maxBuffer: 1024 * 1024 }, (error, stdout) => {
+        if (error) return callback(error);
+        try {
+            const metadata = JSON.parse(stdout);
+            const streams = metadata.streams || [];
+            const videoStream = streams.find(stream => stream.codec_type === 'video');
+            const audioStream = streams.find(stream => stream.codec_type === 'audio');
+            callback(null, {
+                hasVideo: Boolean(videoStream),
+                hasAudio: Boolean(audioStream),
+                width: videoStream?.width || null,
+                height: videoStream?.height || null,
+                videoCodec: videoStream?.codec_name || null,
+                audioCodec: audioStream?.codec_name || null,
+                sampleRate: Number(audioStream?.sample_rate) || null,
+                channels: audioStream?.channels || null,
+                duration: Number(metadata.format?.duration) || 0
+            });
+        } catch (parseError) {
+            callback(parseError);
+        }
+    });
+}
+
+function createTrackAssets(filePath, mediaInfo, callback) {
+    const isWindows = process.platform !== 'linux';
+    const toFfmpegPath = value => isWindows
+        ? `/mnt/${value.substring(0, 1).toLowerCase()}${value.substring(2).replace(/\\/g, '/')}`
+        : value;
+    const inputPath = toFfmpegPath(filePath);
+    const runFfmpeg = (args, done) => {
+        const command = isWindows ? 'wsl' : 'ffmpeg';
+        const commandArgs = isWindows ? ['ffmpeg', ...args] : args;
+        execFile(command, commandArgs, { maxBuffer: 1024 * 1024 }, error => done(error));
+    };
+    const stem = path.parse(filePath).name;
+    const previewTimes = [0.04, 0.28, 0.5, 0.72, 0.9].map(fraction => Math.max(0, (mediaInfo.duration || 1) * fraction));
+    const previewFiles = previewTimes.map((_, index) => `${stem}_preview_${index}.jpg`);
+    const results = new Array(previewFiles.length + (mediaInfo.hasAudio ? 1 : 0));
+    let remaining = results.length;
+    const finish = () => {
+        remaining -= 1;
+        if (remaining === 0) {
+            callback({
+                ...mediaInfo,
+                videoPreviews: previewFiles.map((filename, index) => results[index] ? filename : null),
+                audioWaveform: mediaInfo.hasAudio && results[previewFiles.length] ? `${stem}_waveform.png` : null
+            });
+        }
+    };
+
+    previewFiles.forEach((filename, index) => {
+        const outputPath = path.join(UPLOAD_DIR, filename);
+        const seekTime = previewTimes[index].toFixed(3);
+        runFfmpeg(['-y', '-ss', seekTime, '-i', inputPath, '-frames:v', '1', '-vf', 'scale=160:90:force_original_aspect_ratio=increase,crop=160:90', '-q:v', '4', toFfmpegPath(outputPath)], error => {
+            if (error) console.warn(`Não foi possível criar a miniatura ${filename}: ${error.message}`);
+            results[index] = !error;
+            finish();
+        });
+    });
+
+    if (mediaInfo.hasAudio) {
+        const waveformPath = path.join(UPLOAD_DIR, `${stem}_waveform.png`);
+        runFfmpeg(['-y', '-i', inputPath, '-filter_complex', 'aformat=channel_layouts=mono,showwavespic=s=1200x64:colors=0x6758e8:scale=sqrt', '-frames:v', '1', '-an', toFfmpegPath(waveformPath)], error => {
+            if (error) console.warn(`Não foi possível criar a forma de onda: ${error.message}`);
+            results[previewFiles.length] = !error;
+            finish();
+        });
+    }
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
@@ -35,7 +116,13 @@ app.use('/output', express.static(OUTPUT_DIR));
 // Rota de Upload
 app.post('/upload', upload.single('videoFile'), (req, res) => {
     if (!req.file) return res.status(400).send('Nenhum arquivo enviado.');
-    res.status(200).json({ message: 'Upload bem-sucedido!', filename: req.file.filename });
+    probeMedia(req.file.path, (error, mediaInfo) => {
+        if (error) return res.status(422).json({ message: 'Não foi possível ler as trilhas deste arquivo. Verifique se o FFprobe está instalado e tente outro vídeo.' });
+        if (!mediaInfo.hasVideo) return res.status(422).json({ message: 'Este arquivo não contém uma trilha de vídeo.' });
+        createTrackAssets(req.file.path, mediaInfo, enrichedMediaInfo => {
+            res.status(200).json({ message: 'Upload bem-sucedido!', filename: req.file.filename, mediaInfo: enrichedMediaInfo });
+        });
+    });
 });
 
 // Rota de Processamento
@@ -46,31 +133,31 @@ app.post('/download-from-youtube', (req, res) => {
     if (!youtubeUrl) {
         return res.status(400).json({ message: 'URL do YouTube não fornecida.' });
     }
-
-    // 1. Gera um nome de arquivo base, SEM extensão
-    const baseFilename = `yt_${Date.now()}`;
-    // O template para o yt-dlp agora usa a variável %(ext)s para a extensão correta
+    const baseFilename = `yt_${Date.now()}-${Math.round(Math.random() * 1E9)}`;
     const outputPathTemplate = path.join(UPLOAD_DIR, `${baseFilename}.%(ext)s`);
+    const downloadArgs = ['-f', 'bv*+ba/b', '-o', outputPathTemplate, youtubeUrl];
 
     const IS_RUNNING_IN_WSL = process.platform === 'linux';
     let command;
+    let args;
 
-    // 2. Remove a flag '--merge-output-format mp4' do comando
     if (IS_RUNNING_IN_WSL) {
-        command = `yt-dlp -o "${outputPathTemplate}" -f "bv*+ba/b" "${youtubeUrl}"`;
+        command = 'yt-dlp';
+        args = downloadArgs;
     } else {
         const wslOutputPath = `/mnt/${outputPathTemplate.substring(0, 1).toLowerCase()}${outputPathTemplate.substring(2).replace(/\\/g, '/')}`;
-        command = `wsl yt-dlp -o "${wslOutputPath}" -f "bv*+ba/b" "${youtubeUrl}"`;
+        command = 'wsl';
+        args = ['yt-dlp', ...downloadArgs.map(arg => arg === outputPathTemplate ? wslOutputPath : arg)];
     }
-    
+
     console.log('Executando comando de download:', command);
 
-    exec(command, (error, stdout, stderr) => {
+    execFile(command, args, (error, stdout, stderr) => {
         if (error) {
             console.error(`Erro ao baixar com yt-dlp: ${error.message}`);
-            return res.status(500).json({ message: 'Falha ao baixar vídeo do YouTube.', error: stderr });
+            return res.status(500).json({ message: 'Falha ao baixar vídeo deste link. Verifique se a URL é compatível e acessível.', error: stderr });
         }
-        
+
         // 3. Descobre o nome COMPLETO do arquivo que foi criado
         const files = fs.readdirSync(UPLOAD_DIR);
         const finalFilename = files.find(f => f.startsWith(baseFilename));
@@ -80,42 +167,72 @@ app.post('/download-from-youtube', (req, res) => {
         }
 
         console.log(`Download concluído! Arquivo salvo como: ${finalFilename}`);
-        res.status(200).json({ message: 'Download concluído!', filename: finalFilename });
+        probeMedia(path.join(UPLOAD_DIR, finalFilename), (probeError, mediaInfo) => {
+            if (probeError) return res.status(422).json({ message: 'O vídeo foi baixado, mas não foi possível ler suas trilhas.' });
+            if (!mediaInfo.hasVideo) return res.status(422).json({ message: 'O arquivo baixado não contém uma trilha de vídeo.' });
+            createTrackAssets(path.join(UPLOAD_DIR, finalFilename), mediaInfo, enrichedMediaInfo => {
+                res.status(200).json({ message: 'Download concluído!', filename: finalFilename, mediaInfo: enrichedMediaInfo });
+            });
+        });
     });
 });
 
 app.post('/processar-video', (req, res) => {
-    const { videoPath, start, end } = req.body;
+    const { videoPath, start, end, includeAudio = true, muteAudio = false, outputMode = 'video' } = req.body;
+    if (typeof videoPath !== 'string' || path.basename(videoPath) !== videoPath || !videoPath) {
+        return res.status(400).json({ message: 'Selecione um arquivo de vídeo válido.' });
+    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+        return res.status(400).json({ message: 'O intervalo de corte informado é inválido.' });
+    }
+    if (!['video', 'audio'].includes(outputMode)) {
+        return res.status(400).json({ message: 'Formato de renderização inválido.' });
+    }
+    if (outputMode === 'audio' && includeAudio === false) {
+        return res.status(400).json({ message: 'Selecione uma faixa de áudio para exportar somente o áudio.' });
+    }
     const inputFilePath = path.join(UPLOAD_DIR, videoPath);
-    const outputFilename = `corte_${videoPath}`;
+    const outputFilename = `corte_${path.parse(videoPath).name}.${outputMode === 'audio' ? 'mp3' : 'mp4'}`;
     const outputFilePath = path.join(OUTPUT_DIR, outputFilename);
 
     if (!fs.existsSync(inputFilePath)) {
         return res.status(404).json({ message: `Arquivo não encontrado no servidor: ${videoPath}` });
     }
 
+    const duration = end - start;
     const IS_RUNNING_IN_WSL = process.platform === 'linux';
-    let command;
-
-    if (IS_RUNNING_IN_WSL) {
-        // CORREÇÃO: Adicionada a flag -y para sobrescrever sem perguntar
-        command = `ffmpeg -y -i "${inputFilePath}" -ss ${start.toFixed(3)} -to ${end.toFixed(3)} -c copy "${outputFilePath}"`;
+    const preserveAudio = includeAudio !== false;
+    const wslInputPath = `/mnt/${inputFilePath.substring(0, 1).toLowerCase()}${inputFilePath.substring(2).replace(/\\/g, '/')}`;
+    const wslOutputPath = `/mnt/${outputFilePath.substring(0, 1).toLowerCase()}${outputFilePath.substring(2).replace(/\\/g, '/')}`;
+    const inputPath = IS_RUNNING_IN_WSL ? inputFilePath : wslInputPath;
+    const outputPath = IS_RUNNING_IN_WSL ? outputFilePath : wslOutputPath;
+    const ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3)];
+    if (outputMode === 'audio') {
+        ffmpegArgs.push('-vn', '-map', '0:a:0', '-c:a', 'libmp3lame', '-q:a', '2');
     } else {
-        const wslInputPath = `/mnt/${inputFilePath.substring(0, 1).toLowerCase()}${inputFilePath.substring(2).replace(/\\/g, '/')}`;
-        const wslOutputPath = `/mnt/${outputFilePath.substring(0, 1).toLowerCase()}${outputFilePath.substring(2).replace(/\\/g, '/')}`;
-        // CORREÇÃO: Adicionada a flag -y para sobrescrever sem perguntar
-        command = `wsl ffmpeg -y -i "${wslInputPath}" -ss ${start.toFixed(3)} -to ${end.toFixed(3)} -c copy "${wslOutputPath}"`;
+        ffmpegArgs.push('-map', '0:v:0');
+        if (preserveAudio) {
+            ffmpegArgs.push('-map', '0:a?');
+            if (muteAudio === true) ffmpegArgs.push('-af', 'volume=0');
+            ffmpegArgs.push('-c:a', 'aac', '-b:a', '192k');
+        } else {
+            ffmpegArgs.push('-an');
+        }
+        ffmpegArgs.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-movflags', '+faststart');
     }
-    
+    ffmpegArgs.push(outputPath);
+    const command = IS_RUNNING_IN_WSL ? 'ffmpeg' : 'wsl';
+    const args = IS_RUNNING_IN_WSL ? ffmpegArgs : ['ffmpeg', ...ffmpegArgs];
+
     console.log('Executando comando:', command);
-    
-    exec(command, (error, stdout, stderr) => {
+
+    execFile(command, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
         if (error) {
             console.error(`Erro ao executar comando: ${error.message}`);
             console.error(`Stderr: ${stderr}`);
             return res.status(500).json({ message: 'Falha ao processar o vídeo.', error: stderr });
         }
-        res.status(200).json({ message: 'Vídeo processado com sucesso!', outputFile: outputFilename });
+        res.status(200).json({ message: 'Corte processado com sucesso!', outputFile: outputFilename, outputMode, audioIncluded: outputMode === 'audio' || preserveAudio, audioMuted: outputMode === 'video' && preserveAudio && muteAudio === true });
     });
 });
 

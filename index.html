@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    
-    <title>ClipCraft - Video Editor</title>
+
+    <title>ClipCraft — Editor de vídeo</title>
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/5764/5764196.png">
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,126 +18,146 @@
     <nav class="top-nav">
         <div class="header-content">
             <img src="https://cdn-icons-png.flaticon.com/512/5764/5764196.png" alt="ClipCraft Logo" class="logo">
-            <h1>ClipCraft</h1>
+            <h1>ClipCraft<span>STUDIO</span></h1>
         </div>
-        <button id="theme-toggle" class="theme-button"></button>
+        <nav class="top-tabs" aria-label="Navegação principal">
+            <button class="tab-button active" data-view-target="step-1-upload" aria-current="page">Origem</button>
+            <button class="tab-button" data-view-target="step-2-editor" disabled>Editor</button>
+            <button class="tab-button" data-view-target="step-3-result" disabled>Download</button>
+            <button class="tab-button support-tab" data-view-target="credits-view">☕ Apoiar</button>
+        </nav>
+        <div class="nav-meta"><span class="local-badge"><span></span> Processamento local</span><button id="theme-toggle" class="theme-button" aria-label="Alternar tema"></button></div>
     </nav>
 
     <main>
-         <section id="step-1-upload" class="step">
+         <section id="step-1-upload" class="step app-view active">
             <div class="step-content">
-                <h2>1. Choose Your Source</h2>
-                <p>Start by uploading a local file or pasting a YouTube link.</p>
-                
+                <div class="section-heading"><span class="eyebrow">SEU PRÓXIMO CORTE COMEÇA AQUI</span><h2>Escolha um vídeo</h2>
+                <p>Selecione um arquivo do computador ou cole um link de vídeo de uma plataforma compatível.</p></div>
+
                 <div id="mode-selector">
-                    <button class="mode-selector-btn active" data-mode="local">
-                        <span class="icon">📁</span> Local File
+                    <button class="mode-selector-btn active" data-mode="local" aria-pressed="true">
+                        <span class="icon">▧</span> Arquivo local
                     </button>
-                    <button class="mode-selector-btn" data-mode="youtube">
-                        <span class="icon">▶️</span> YouTube Link
+                    <button class="mode-selector-btn" data-mode="youtube" aria-pressed="false">
+                        <span class="icon">▷</span> Link da web
                     </button>
                 </div>
 
                 <div id="source-input-area">
                     <div id="local-file-area">
                         <label for="videoFile" id="file-upload-area">
-                            <strong>Click here to select a video</strong>
-                            <input type="file" id="videoFile" accept="video/*" style="display: none;">
+                            <span class="upload-icon">↑</span>
+                            <strong>Arraste um vídeo ou <em>selecione um arquivo</em></strong>
+                            <span class="file-hint">MP4, MOV, WebM e outros formatos de vídeo</span>
+                            <input type="file" id="videoFile" accept="video/*,.mkv,.avi,.mov,.mp4,.webm" class="visually-hidden">
                         </label>
                     </div>
 
                     <div id="youtube-link-area" style="display: none;">
-                        <input type="text" id="youtubeUrlInput" placeholder="https://www.youtube.com/watch?v=...">
-                        <button id="loadYoutubeVideo" class="nav-button primary">Load Video</button>
+                        <div class="youtube-panel">
+                            <span class="upload-icon">▶</span>
+                            <strong>Adicione um link de vídeo</strong>
+                            <span class="file-hint">Cole o endereço aqui ou use Ctrl+V em qualquer lugar desta página</span>
+                            <div class="youtube-url-row">
+                                <input type="url" id="youtubeUrlInput" placeholder="https://..." aria-label="Link do vídeo">
+                                <button id="pasteYoutubeLink" class="paste-button icon-button" type="button" aria-label="Colar link da área de transferência" title="Colar link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3M9 3h6v4H9zM8 13h8m-8 4h8"/></svg></button>
+                            </div>
+                            <button id="loadYoutubeVideo" class="nav-button primary">Baixar para editar <span>→</span></button>
+                        </div>
                     </div>
                 </div>
 
-                <div id="uploadStatus" class="status-text"></div>
+                <div id="uploadStatus" class="status-text" role="status" aria-live="polite"></div>
             </div>
         </section>
 
-        <section id="step-2-editor" class="step">
+        <section id="step-2-editor" class="step app-view">
             <div class="step-content-wide">
-                <h2>2. Trim Your Clip</h2>
+                <div class="editor-heading"><div><span class="eyebrow">EDIÇÃO</span><h2>Defina o trecho</h2><p>Ajuste a seleção na trilha de vídeo e escolha a saída.</p></div><a href="#step-1-upload" class="text-link change-source icon-button" title="Trocar vídeo" aria-label="Trocar vídeo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11l-3-3m3 3-3 3M17 17H6l3 3m-3-3 3-3"/></svg></a></div>
                 <div id="video-container" style="display:none;">
                     <video id="videoPlayer" width="100%" controls></video>
-                    <div id="timeline-slider"></div>
                 </div>
-                <div id="controls" style="display:none;">
-                    <div class="controls-wrapper"> 
-                        <div class="time-control-group">
-                            <label for="startTimeInput">Start</label>
-                            <div class="input-wrapper">
-                              <button class="frame-btn" data-type="start" data-frames="-10">-10f</button>
-                              <button class="frame-btn" data-type="start" data-frames="-1">-1f</button>
-                              <input type="text" id="startTimeInput" size="8">
-                              <button class="frame-btn" data-type="start" data-frames="1">+1f</button>
-                              <button class="frame-btn" data-type="start" data-frames="10">+10f</button>
-                            </div>
+                <div id="controls" class="timeline-panel" style="display:none;">
+                    <div class="render-mode-row">
+                        <span>EXPORTAR COMO</span>
+                        <div class="render-mode-options" role="group" aria-label="Formato da renderização">
+                            <button id="renderVideoMode" class="render-mode-option active" type="button" aria-pressed="true" title="Exportar vídeo com ou sem áudio"><span aria-hidden="true">▣</span> Vídeo</button>
+                            <button id="renderAudioMode" class="render-mode-option" type="button" aria-pressed="false" title="Exportar somente a faixa de áudio em MP3"><span aria-hidden="true">♫</span> Somente áudio</button>
                         </div>
-                        <div class="time-control-group">
-                            <label for="endTimeInput">End</label>
-                            <div class="input-wrapper">
-                              <button class="frame-btn" data-type="end" data-frames="-10">-10f</button>
-                              <button class="frame-btn" data-type="end" data-frames="-1">-1f</button>
-                              <input type="text" id="endTimeInput" size="8">
-                              <button class="frame-btn" data-type="end" data-frames="1">+1f</button>
-                              <button class="frame-btn" data-type="end" data-frames="10">+10f</button>
-                            </div>
+                    </div>
+                    <div class="timeline-toolbar">
+                        <div class="timeline-title"><span class="eyebrow">LINHA DO TEMPO</span><strong>Seleção do corte</strong></div>
+                        <div class="range-controls">
+                            <label class="range-input"><span>INÍCIO</span><div><input type="number" id="startTimeInput" min="0" step="0.01" inputmode="decimal" aria-label="Início do trecho em segundos"><small>s</small></div></label>
+                            <label class="range-input"><span>FIM</span><div><input type="number" id="endTimeInput" min="0" step="0.01" inputmode="decimal" aria-label="Fim do trecho em segundos"><small>s</small></div></label>
+                            <span id="selectionDuration" class="selection-duration">0,00 s selecionados</span>
+                        </div>
+                        <button id="toggleTracks" class="tracks-toggle icon-button" type="button" aria-expanded="true" aria-label="Ocultar trilhas" title="Ocultar trilhas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4"/></svg></button>
+                    </div>
+                    <div id="timelineTracks" class="timeline-tracks">
+                        <div class="track-row video-track">
+                            <div class="track-label"><span class="track-icon video-icon">▣</span><span><strong>Vídeo</strong><small id="videoTrackInfo">Faixa visual</small></span></div>
+                            <div class="track-lane video-lane"><div id="videoTrackPreviews" class="video-track-previews" aria-hidden="true"></div><div id="videoSelectionOverlay" class="video-selection-overlay"></div><div id="videoPlayhead" class="timeline-playhead" aria-hidden="true"></div><div id="timeline-slider"></div></div>
+                        </div>
+                        <div class="track-row audio-track" id="audioTrackRow">
+                            <div class="track-label audio-track-label"><span class="track-icon audio-icon">♫</span><span class="audio-track-copy"><strong>Áudio</strong><small id="audioTrackInfo">Incluído na renderização</small></span><div class="audio-track-actions"><button id="audioMuteToggle" class="track-action icon-button" type="button" aria-label="Silenciar trilha de áudio" title="Silenciar áudio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4zM15 9a5 5 0 0 1 0 6m3-9a9 9 0 0 1 0 12"/></svg><span class="mute-slash" aria-hidden="true">／</span></button><button id="audioRemoveToggle" class="track-action remove-action icon-button" type="button" aria-label="Remover trilha de áudio" title="Remover faixa do vídeo">×</button></div></div>
+                            <div class="track-lane audio-lane"><img id="audioWaveform" alt="" aria-hidden="true"><div id="audioSelectionOverlay" class="audio-selection-overlay"></div><div id="audioPlayhead" class="timeline-playhead" aria-hidden="true"></div></div>
                         </div>
                     </div>
                 </div>
                  <div class="navigation-links">
-                    <a href="#step-1-upload" class="nav-button secondary">&larr; Change Source</a>
-                    <a href="#step-3-result" class="nav-button primary">Process Video &rarr;</a>
+                    <a href="#step-1-upload" class="nav-button secondary" title="Voltar para escolher outro vídeo">Voltar</a>
+                    <a href="#step-3-result" class="nav-button primary process-link" title="Criar o corte e abrir o download">Criar corte</a>
                 </div>
             </div>
         </section>
 
-        <section id="step-3-result" class="step">
+        <section id="step-3-result" class="step app-view">
             <div class="step-content">
-                <h2>3. Get Your File</h2>
-                <p>Your new clip is ready!</p>
-                <button id="processButton" style="display:none;">Confirm Process</button>
-                <div id="statusArea" class="status-text"></div>
+                <span class="eyebrow">EXPORTAÇÃO</span><h2>Seu corte</h2>
+                <p id="resultDescription">Renderize o trecho selecionado para preparar seu arquivo.</p>
+                <button id="processButton" class="nav-button primary export-button" title="Renderizar e preparar o download">Preparar download</button>
+                <div id="statusArea" class="status-text" role="status" aria-live="polite"></div>
                 <div id="downloadArea"></div>
 
                 <details class="command-details">
-                    <summary>View FFmpeg Command</summary>
+                    <summary>Detalhes técnicos</summary>
                     <div id="command-area"><pre id="outputCommand"></pre></div>
                 </details>
-                
+
                 <div class="navigation-links">
-                    <a href="#step-2-editor" class="nav-button secondary">&larr; Back to Editor</a>
-                    <a href="#step-4-support" class="nav-button secondary">Support this Project</a>
+                    <a href="#step-2-editor" class="nav-button secondary">← Voltar ao editor</a>
+                    <a href="#credits-view" class="nav-button secondary">Apoiar o projeto</a>
                 </div>
             </div>
         </section>
-        
-       <section id="step-4-support" class="step">
+
+       <section id="credits-view" class="app-view credits-view">
             <div class="step-content">
-                <h2>Enjoying ClipCraft?</h2>
-                <p>This tool is free and developed with care. If you find it useful, consider supporting its development.</p>
-                
+                <span class="eyebrow">CRÉDITOS</span>
+                <h2>Apoie o ClipCraft</h2>
+                <p>Este projeto é gratuito. Se ele foi útil para você, considere apoiar o seu desenvolvimento.</p>
+
                 <div class="support-wrapper">
                     <div class="support-option">
-                        <h3>Anywhere else?</h3>
+                        <h3>Outras localidades</h3>
                         <a href="#" target="_blank" rel="noopener noreferrer" class="nav-button primary support-button paypal">
                             <svg viewBox="0 0 24 24" fill="currentColor" height="1em" width="1em"><path d="M7.358 3.056H16.4c.42 0 .768.125 1.042.373.274.248.411.58.411 1.002v1.5H9.366c-.63 0-1.168.188-1.616.562-.448.375-.672.88-.672 1.516s.214 1.125.642 1.5s.96.563 1.6.563h.852c.622 0 1.15.188 1.588.563.438.375.657.88.657 1.515s-.223 1.125-.668 1.501c-.446.375-.99.562-1.63.562h-4.32c-.42 0-.768-.125-1.042-.373s-.41-.58-.41-1.002v-1.5H14.63c.63 0 1.168-.188 1.616-.563.448-.375.672-.88.672-1.515s-.214-1.125-.642-1.5s-.96-.563-1.6-.563h-.852c-.622 0-1.15-.188-1.588-.563-.438-.375-.657-.88-.657-1.515s.223-1.125.668-1.5c.446-.376.99-.563 1.63-.563h4.32c.42 0 .768.125 1.042.373s.41.58.41 1.002v2.875c0 .76-.237 1.41-.711 1.954s-1.053.816-1.737.816H7.358c-.76 0-1.412-.238-1.958-.713S4.69 16.71 4.69 15.95V4.43c0-.76.238-1.41.713-1.954C5.878 2.238 6.53 2 7.218 2h9.18c.76 0 1.412.238 1.958.713.546.474.819 1.125.819 1.957v.938h-2.146V4.058c0-.42-.138-.752-.412-1.002S17.8 2.68 17.38 2.68H7.218c-.42 0-.752.137-1.002.412s-.375.625-.375 1.042v.938h2.146V3.056z" /></svg>
-                            PayPal
+                            Apoiar via PayPal
                         </a>
                     </div>
                     <div class="support-option">
-                        <h3>Are you in Brazil?</h3>
+                        <h3>Você está no Brasil?</h3>
                          <button class="nav-button primary support-button pix" onclick="alert('My PIX key is: SUA-CHAVE-PIX')">
                            <svg viewBox="0 0 24 24" fill="currentColor" height="1em" width="1em"><path d="M12.383 3.083l-7.394 4.195a1.144 1.144 0 00-.583.997v8.423c0 .41.22.793.583.997l7.394 4.195c.34.193.753.193 1.094 0l7.394-4.195c.364-.204.583-.588.583-.997V8.275a1.144 1.144 0 00-.583-.997L13.477 3.083a1.268 1.268 0 00-1.094 0zm-1.094 16.14l-6.81-3.86v-7.46l6.81-3.861v15.18zM10.8 7.373v4.205c0 .48.303.904.76.904h1.74a.79.79 0 00.79-.79V7.373a.79.79 0 00-.79-.79h-1.74a.76.76 0 00-.76.79zm-2.074 4.88c-.64.08-1.28.31-1.28 1.28v1.36c0 .97.64 1.2 1.28 1.28.64.08 1.28-.15 1.28-1.28v-1.36c0-1.13-.64-1.2-1.28-1.28zm8.614-.08c-.64.08-1.28.31-1.28 1.28v1.36c0 .97.64 1.2 1.28 1.28.64.08 1.28-.15 1.28-1.28v-1.36c0-1.13-.64-1.2-1.28-1.28z" /></svg>
-                            Pix me
+                            Apoiar via Pix
                         </button>
                     </div>
                 </div>
 
                 <div class="navigation-links">
-                    <a href="#step-3-result" class="nav-button secondary">&larr; Back to Download</a>
+                    <a href="#step-1-upload" class="nav-button secondary">← Voltar à origem</a>
                 </div>
             </div>
         </section>
