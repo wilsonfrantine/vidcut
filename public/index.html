@@ -85,13 +85,45 @@
                     </div>
                     <div class="timeline-toolbar">
                         <div class="timeline-title"><span class="eyebrow">LINHA DO TEMPO</span><strong>Seleção do corte</strong></div>
-                        <div class="range-controls">
-                            <label class="range-input"><span>INÍCIO</span><div><input type="number" id="startTimeInput" min="0" step="0.01" inputmode="decimal" aria-label="Início do trecho em segundos"><small>s</small></div></label>
-                            <label class="range-input"><span>FIM</span><div><input type="number" id="endTimeInput" min="0" step="0.01" inputmode="decimal" aria-label="Fim do trecho em segundos"><small>s</small></div></label>
-                            <span id="selectionDuration" class="selection-duration">0,00 s selecionados</span>
+                        <div class="toolbar-actions">
+                            <button id="shortcutsToggle" class="tracks-toggle icon-button" type="button" aria-expanded="false" aria-controls="shortcutsPanel" aria-label="Atalhos de teclado" title="Atalhos de teclado (?)"><span aria-hidden="true">⌨</span></button>
+                            <button id="toggleTracks" class="tracks-toggle icon-button" type="button" aria-expanded="true" aria-label="Ocultar trilhas" title="Ocultar trilhas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4"/></svg></button>
                         </div>
-                        <button id="toggleTracks" class="tracks-toggle icon-button" type="button" aria-expanded="true" aria-label="Ocultar trilhas" title="Ocultar trilhas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4"/></svg></button>
                     </div>
+                    <div class="selection-bar">
+                        <div class="range-controls">
+                            <label class="range-input"><span>INÍCIO</span><div><input type="text" id="startTimeInput" inputmode="decimal" autocomplete="off" placeholder="0:00.00" aria-label="Início do trecho (mm:ss.cc ou segundos)"></div></label>
+                            <label class="range-input"><span>FIM</span><div><input type="text" id="endTimeInput" inputmode="decimal" autocomplete="off" placeholder="0:00.00" aria-label="Fim do trecho (mm:ss.cc ou segundos)"></div></label>
+                            <span id="selectionDuration" class="selection-duration">0:00,00 selecionados</span>
+                        </div>
+                        <div class="mark-buttons">
+                                <button id="markStart" class="mark-button" type="button" title="Marcar início no ponto atual (I)">⇤ Marcar início</button>
+                                <button id="markEnd" class="mark-button" type="button" title="Marcar fim no ponto atual (O)">Marcar fim ⇥</button>
+                                <button id="loopToggle" class="mark-button active" type="button" aria-pressed="true" title="Repetir a seleção durante a reprodução (R)">↻ Repetir</button>
+                        </div>
+                    </div>
+                    <section id="shortcutsPanel" class="shortcuts-panel" aria-label="Atalhos de teclado" hidden>
+                        <div class="shortcuts-body">
+                            <div class="shortcuts-group">
+                                <h4>Reprodução</h4>
+                                <ul>
+                                    <li><span class="keys"><kbd>Espaço</kbd><kbd>K</kbd></span><span>Reproduzir / pausar</span></li>
+                                    <li><span class="keys"><kbd>←</kbd><kbd>→</kbd></span><span>Voltar / avançar 1 s</span></li>
+                                    <li><span class="keys"><kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd></span><span>Mover 1 quadro</span></li>
+                                    <li><span class="keys"><kbd>J</kbd><kbd>L</kbd></span><span>Voltar / avançar 5 s</span></li>
+                                </ul>
+                            </div>
+                            <div class="shortcuts-group">
+                                <h4>Edição</h4>
+                                <ul>
+                                    <li><span class="keys"><kbd>I</kbd></span><span>Marcar início</span></li>
+                                    <li><span class="keys"><kbd>O</kbd></span><span>Marcar fim</span></li>
+                                    <li><span class="keys"><kbd>R</kbd></span><span>Repetir seleção</span></li>
+                                    <li><span class="keys"><kbd>?</kbd></span><span>Mostrar / ocultar atalhos</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
                     <div id="timelineTracks" class="timeline-tracks">
                         <div class="track-row video-track">
                             <div class="track-label"><span class="track-icon video-icon">▣</span><span><strong>Vídeo</strong><small id="videoTrackInfo">Faixa visual</small></span></div>

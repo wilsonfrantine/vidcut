@@ -120,7 +120,7 @@ main { width: min(100% - 40px, 1020px); min-height: calc(100vh - 68px); margin: 
 .range-input { display: flex; align-items: center; gap: 6px; }
 .range-input > span { color: var(--text-secondary); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 .range-input > div { display: flex; align-items: center; gap: 4px; padding-right: 8px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--panel-color); }
-.range-input input { width: 68px; height: 31px; padding: 0 4px 0 8px; border: 0; outline: none; background: transparent; color: var(--text-primary); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.range-input input { width: 84px; height: 31px; padding: 0 4px 0 8px; border: 0; outline: none; background: transparent; color: var(--text-primary); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .range-input small { color: var(--text-secondary); font-size: 10px; }
 .selection-duration { padding-left: 5px; color: var(--text-secondary); font-size: 10px; white-space: nowrap; }
 .tracks-toggle { padding: 6px 9px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--panel-color); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
@@ -249,7 +249,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .render-mode-option { flex: 1; padding: 0 7px; font-size: 10px; }
     .timeline-toolbar { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
     .timeline-title { grid-column: 1; }
-    .tracks-toggle { grid-column: 2; grid-row: 1; }
+    .toolbar-actions { grid-column: 2; grid-row: 1; }
     .range-controls { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; gap: 5px; }
     .range-input { gap: 4px; }
     .range-input > span { font-size: 8px; }
@@ -278,3 +278,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 #deps-banner pre { margin: 6px 0; padding: 10px; overflow-x: auto; border-radius: 8px; background: rgba(0,0,0,.18); font-size: 12.5px; }
 
 .mode-selector-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Marcação, repetição e atalhos */
+.mark-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.mark-button { min-height: 34px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 9px; background: var(--surface-soft); color: var(--text-primary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.mark-button:hover { border-color: var(--accent-color); }
+.mark-button.active { border-color: var(--accent-color); background: var(--accent-color); color: #fff; }
+.shortcuts-panel { margin: 6px 0 12px; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--surface-soft); }
+.shortcuts-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 28px; }
+.shortcuts-panel[hidden] { display: none; }
+#shortcutsToggle.active { color: var(--accent-color); border-color: var(--accent-color); }
+#shortcutsToggle span { font-size: 16px; line-height: 1; }
+.shortcuts-group h4 { margin: 0 0 6px; color: var(--text-secondary); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.shortcuts-group ul { margin: 0; padding: 0; list-style: none; }
+.shortcuts-group li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+.shortcuts-group li:last-child { border-bottom: 0; }
+.shortcuts-group li > span:last-child { color: var(--text-secondary); text-align: right; }
+.shortcuts-group .keys { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 11px; }
+.shortcuts-panel kbd { min-width: 22px; padding: 2px 7px; border: 1px solid var(--border-color); border-bottom-width: 2px; border-radius: 6px; background: var(--panel-color); color: var(--text-primary); font: 700 11px/1.4 var(--font-sans); text-align: center; }
+
+
+/* Barra de seleção: tempos à esquerda, marcação à direita */
+.toolbar-actions { display: flex; gap: 6px; }
+.toolbar-actions .icon-button { width: 34px; min-width: 34px; height: 34px; min-height: 34px; }
+.selection-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 12px; }
+.mark-button { white-space: nowrap; }
+.mark-buttons { gap: 6px; }
+.shortcuts-group li { justify-content: flex-start; }
+.shortcuts-group .keys { flex: 0 0 140px; }
+.shortcuts-group li > span:last-child { text-align: left; }
+@media (max-width: 640px) {
+    .selection-bar { flex-direction: column; align-items: stretch; }
+    .selection-bar .range-controls { justify-content: space-between; }
+    .mark-buttons { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .mark-button { padding: 0 6px; font-size: 12px; }
+    .shortcuts-group .keys { flex-basis: 120px; }
+}

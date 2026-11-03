@@ -147,6 +147,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Painel de atalhos: recolhido por padrão; a preferência fica salva
+    const shortcutsToggle = document.getElementById('shortcutsToggle');
+    const shortcutsPanel = document.getElementById('shortcutsPanel');
+    function setShortcutsVisible(visible) {
+        shortcutsPanel.hidden = !visible;
+        shortcutsToggle.setAttribute('aria-expanded', String(visible));
+        shortcutsToggle.classList.toggle('active', visible);
+        localStorage.setItem('shortcutsVisible', String(visible));
+    }
+    setShortcutsVisible(localStorage.getItem('shortcutsVisible') === 'true');
+    shortcutsToggle.addEventListener('click', () => setShortcutsVisible(shortcutsPanel.hidden));
+
     document.addEventListener('videoUploaded', () => {
         viewTabs.forEach(tab => {
             if (tab.dataset.viewTarget !== 'step-1-upload') tab.disabled = false;

@@ -16,6 +16,7 @@ const VidCutApp = {
         audioMuted: false,
         outputMode: 'video',
         isTimelineScrubbing: false,
+        loopSelection: true,
         audioTrackDetails: null,
     },
 
@@ -54,6 +55,9 @@ const VidCutApp = {
             audioWaveform: document.getElementById('audioWaveform'),
             videoPlayhead: document.getElementById('videoPlayhead'),
             audioPlayhead: document.getElementById('audioPlayhead'),
+            markStart: document.getElementById('markStart'),
+            markEnd: document.getElementById('markEnd'),
+            loopToggle: document.getElementById('loopToggle'),
         };
 
         this.addEventListeners();
@@ -70,6 +74,11 @@ const VidCutApp = {
         this.DOM.startTimeInput.addEventListener('change', () => this.handleTimeInputChange('start'));
         this.DOM.endTimeInput.addEventListener('change', () => this.handleTimeInputChange('end'));
         this.DOM.processButton.addEventListener('click', () => this.processVideo());
+        this.DOM.markStart.addEventListener('click', () => this.markBoundary('start'));
+        this.DOM.markEnd.addEventListener('click', () => this.markBoundary('end'));
+        this.DOM.loopToggle.addEventListener('click', () => this.toggleLoop());
+        this.DOM.videoPlayer.addEventListener('play', () => this.startLoopWatcher());
+        document.addEventListener('keydown', event => this.handleShortcut(event));
 
         this.DOM.timelineSlider.addEventListener('mousedown', event => {
             if (event.button !== 0 || event.target.closest('.noUi-handle')) return;
@@ -294,23 +303,31 @@ const VidCutApp = {
 
         this.DOM.timelineSlider.noUiSlider.on('slide', (values, handle) => {
             this.DOM.videoPlayer.currentTime = parseFloat(values[handle]);
-            this.DOM.startTimeInput.value = parseFloat(values[0]).toFixed(2);
-            this.DOM.endTimeInput.value = parseFloat(values[1]).toFixed(2);
+            this.DOM.startTimeInput.value = this.formatTime(parseFloat(values[0]));
+            this.DOM.endTimeInput.value = this.formatTime(parseFloat(values[1]));
         });
 
         this.updateTimelineUI();
         this.updatePlayhead();
     },
 
-    handleTimeInputChange(type) {
-        if (!this.state.videoPath) return;
-        const input = type === 'start' ? this.DOM.startTimeInput : this.DOM.endTimeInput;
-        const candidate = Number(input.value);
-        if (input.value.trim() === '' || !Number.isFinite(candidate)) {
-            this.showTimeError('Digite um tempo válido em segundos.');
-            this.updateTimelineUI();
-            return;
-        }
+    // Tempo: formatação e leitura (aceita "90.5", "1:30.5" ou "1:02:03")
+    formatTime(seconds) {
+        const total = Math.max(0, seconds);
+        const cs = Math.round(total * 100);
+        const h = Math.floor(cs / 360000);
+        const m = Math.floor((cs % 360000) / 6000);
+        const s = ((cs % 6000) / 100).toFixed(2).padStart(5, '0');
+        return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+    },
+    parseTime(text) {
+        const value = String(text).trim().replace(',', '.');
+        if (!/^\d+(\.\d+)?(:\d+(\.\d+)?){0,2}$/.test(value)) return NaN;
+        return value.split(':').reduce((total, part) => total * 60 + Number(part), 0);
+    },
+
+    // Define início ou fim respeitando os limites do vídeo
+    applyBoundary(type, candidate) {
         const value = Math.min(this.state.videoDuration, Math.max(0, candidate));
         if (type === 'start') this.state.start = Math.min(value, this.state.end - 0.01);
         else this.state.end = Math.max(value, this.state.start + 0.01);
@@ -321,10 +338,86 @@ const VidCutApp = {
         this.DOM.statusArea.innerText = '';
     },
 
+    handleTimeInputChange(type) {
+        if (!this.state.videoPath) return;
+        const input = type === 'start' ? this.DOM.startTimeInput : this.DOM.endTimeInput;
+        const candidate = this.parseTime(input.value);
+        if (!Number.isFinite(candidate)) {
+            this.showTimeError('Digite um tempo válido, como 75, 1:15 ou 1:15.50.');
+            this.updateTimelineUI();
+            return;
+        }
+        this.applyBoundary(type, candidate);
+    },
+
+    markBoundary(type) {
+        if (!this.state.videoPath || !this.DOM.timelineSlider.noUiSlider) return;
+        this.applyBoundary(type, this.DOM.videoPlayer.currentTime);
+    },
+
+    toggleLoop() {
+        this.state.loopSelection = !this.state.loopSelection;
+        this.DOM.loopToggle.setAttribute('aria-pressed', String(this.state.loopSelection));
+        this.DOM.loopToggle.classList.toggle('active', this.state.loopSelection);
+        if (this.state.loopSelection) this.startLoopWatcher();
+    },
+
+    startLoopWatcher() {
+        if (this.loopFrame) return;
+        const tick = () => {
+            const player = this.DOM.videoPlayer;
+            if (player.paused || !this.state.loopSelection) { this.loopFrame = null; return; }
+            if (player.currentTime >= this.state.end || player.currentTime < this.state.start - 0.05) {
+                player.currentTime = this.state.start;
+            }
+            this.loopFrame = requestAnimationFrame(tick);
+        };
+        this.loopFrame = requestAnimationFrame(tick);
+    },
+
+    seekBy(delta) {
+        const player = this.DOM.videoPlayer;
+        player.currentTime = Math.max(0, Math.min(this.state.videoDuration, player.currentTime + delta));
+        this.updatePlayhead();
+    },
+
+    togglePlayback() {
+        const player = this.DOM.videoPlayer;
+        if (!player.paused) { player.pause(); return; }
+        if (this.state.loopSelection && (player.currentTime < this.state.start || player.currentTime >= this.state.end)) {
+            player.currentTime = this.state.start;
+        }
+        player.play().catch(() => {});
+    },
+
+    handleShortcut(event) {
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (!document.getElementById('step-2-editor').classList.contains('active') || !this.state.videoPath) return;
+        if (event.target.closest('input, textarea, select, [contenteditable]')) return;
+        const frame = 0.04;
+        const actions = {
+            ' ': () => this.togglePlayback(),
+            k: () => this.togglePlayback(),
+            i: () => this.markBoundary('start'),
+            o: () => this.markBoundary('end'),
+            r: () => this.toggleLoop(),
+            '?': () => document.getElementById('shortcutsToggle').click(),
+            j: () => this.seekBy(-5),
+            l: () => this.seekBy(5),
+            ArrowLeft: () => this.seekBy(event.shiftKey ? -frame : -1),
+            ArrowRight: () => this.seekBy(event.shiftKey ? frame : 1)
+        };
+        const action = actions[event.key.length === 1 ? event.key.toLowerCase() : event.key];
+        if (!action) return;
+        if (event.target.closest('button') && event.key === ' ') return; // espaço em botão = ativar o botão
+        event.preventDefault();
+        action();
+    },
+
     updateTimelineUI() {
-        this.DOM.startTimeInput.value = this.state.start.toFixed(2);
-        this.DOM.endTimeInput.value = this.state.end.toFixed(2);
-        this.DOM.selectionDuration.innerText = `${(this.state.end - this.state.start).toFixed(2).replace('.', ',')} s selecionados`;
+        this.DOM.startTimeInput.value = this.formatTime(this.state.start);
+        this.DOM.endTimeInput.value = this.formatTime(this.state.end);
+        this.DOM.selectionDuration.innerText = `${this.formatTime(this.state.end - this.state.start).replace('.', ',')} selecionados`;
         const duration = this.state.videoDuration || 1;
         this.DOM.videoSelectionOverlay.style.left = `${(this.state.start / duration) * 100}%`;
         this.DOM.videoSelectionOverlay.style.width = `${((this.state.end - this.state.start) / duration) * 100}%`;
