@@ -215,22 +215,41 @@ app.post('/download-from-youtube', (req, res) => {
 });
 
 app.post('/processar-video', (req, res) => {
-    const { videoPath, start, end, includeAudio = true, muteAudio = false, outputMode = 'video' } = req.body;
+    const { 
+        videoPath, 
+        start, 
+        end, 
+        includeAudio = true, 
+        muteAudio = false, 
+        outputMode = 'original', // 'original' (sem conversão), 'mp4' (h264) ou 'audio' (mp3)
+        customName = '' 
+    } = req.body;
     if (typeof videoPath !== 'string' || path.basename(videoPath) !== videoPath || !videoPath) {
         return res.status(400).json({ message: 'Selecione um arquivo de vídeo válido.' });
     }
     if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
         return res.status(400).json({ message: 'O intervalo de corte informado é inválido.' });
     }
-    if (!['video', 'audio'].includes(outputMode)) {
+    if (!['original', 'mp4', 'video', 'audio'].includes(outputMode)) {
         return res.status(400).json({ message: 'Formato de renderização inválido.' });
     }
     if (outputMode === 'audio' && includeAudio === false) {
         return res.status(400).json({ message: 'Selecione uma faixa de áudio para exportar somente o áudio.' });
     }
     const inputFilePath = path.join(UPLOAD_DIR, videoPath);
-    // O nome inclui o intervalo para que cortes diferentes do mesmo vídeo não se sobrescrevam.
-    const outputFilename = `corte_${path.parse(videoPath).name}_${Math.round(start * 1000)}-${Math.round(end * 1000)}.${outputMode === 'audio' ? 'mp3' : 'mp4'}`;
+    // Sanitiza nome personalizado (se fornecido) ou gera nome baseado no vídeo e intervalo
+    let safeBaseName = '';
+    if (typeof customName === 'string' && customName.trim()) {
+        safeBaseName = customName.trim()
+            .replace(/[\\/:*?"<>|\x00-\x1F]/g, '_')
+            .replace(/\.[^.]+$/, '')
+            .substring(0, 100);
+    }
+    const origExt = (path.extname(videoPath).slice(1) || 'mp4').toLowerCase();
+    const ext = outputMode === 'audio' ? 'mp3' : (outputMode === 'original' ? origExt : 'mp4');
+    const outputFilename = safeBaseName 
+        ? `${safeBaseName}.${ext}` 
+        : `corte_${path.parse(videoPath).name}_${Math.round(start * 1000)}-${Math.round(end * 1000)}.${ext}`;
     const outputFilePath = path.join(OUTPUT_DIR, outputFilename);
 
     if (!fs.existsSync(inputFilePath)) {
@@ -244,11 +263,17 @@ app.post('/processar-video', (req, res) => {
     const wslOutputPath = `/mnt/${outputFilePath.substring(0, 1).toLowerCase()}${outputFilePath.substring(2).replace(/\\/g, '/')}`;
     const inputPath = IS_RUNNING_IN_WSL ? inputFilePath : wslInputPath;
     const outputPath = IS_RUNNING_IN_WSL ? outputFilePath : wslOutputPath;
-    const ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3)];
-    if (outputMode === 'audio') {
-        ffmpegArgs.push('-vn', '-map', '0:a:0', '-c:a', 'libmp3lame', '-q:a', '2');
+    const isOriginalCopy = (outputMode === 'original' || outputMode === 'video') && preserveAudio && !muteAudio;
+    let ffmpegArgs = [];
+    if (isOriginalCopy) {
+        // Modo Sem Conversão (-c copy): cópia exata de streams sem perda nem reencodamento
+        ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-c', 'copy', '-map', '0'];
+    } else if (outputMode === 'audio') {
+        // Extração de áudio MP3
+        ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-vn', '-map', '0:a:0', '-c:a', 'libmp3lame', '-q:a', '2'];
     } else {
-        ffmpegArgs.push('-map', '0:v:0');
+        // Recodificação compatível em MP4 (H.264 + AAC)
+        ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-map', '0:v:0'];
         if (preserveAudio) {
             ffmpegArgs.push('-map', '0:a?');
             if (muteAudio === true) ffmpegArgs.push('-af', 'volume=0');

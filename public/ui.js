@@ -1,7 +1,8 @@
 // Theme control
 (function () {
     const themeToggle = document.getElementById('theme-toggle');
-    const savedTheme = localStorage.getItem('theme') || 'light';
+    const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('theme') || (systemPrefersDark ? 'dark' : 'light');
 
     function applyTheme(theme) {
         document.body.dataset.theme = theme;
@@ -10,6 +11,14 @@
     }
 
     applyTheme(savedTheme);
+
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (!localStorage.getItem('theme')) {
+                applyTheme(e.matches ? 'dark' : 'light');
+            }
+        });
+    }
     themeToggle.addEventListener('click', () => {
         const nextTheme = document.body.dataset.theme === 'light' ? 'dark' : 'light';
         applyTheme(nextTheme);
@@ -154,6 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const viewId = link.getAttribute('href').slice(1);
             if (!document.getElementById(viewId)?.classList.contains('app-view')) return;
             event.preventDefault();
+            if (viewId === 'step-3-result' && window.VidCutApp) {
+                const intervalErr = window.VidCutApp.getIntervalError();
+                if (intervalErr) {
+                    window.VidCutApp.showTimeError(intervalErr);
+                    return;
+                }
+            }
             setView(viewId);
             if (link.classList.contains('process-link')) processButton.click();
         });

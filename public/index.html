@@ -80,14 +80,7 @@
                     <video id="videoPlayer" width="100%" controls></video>
                 </div>
                 <div id="controls" class="timeline-panel" style="display:none;">
-                    <div class="render-mode-row">
-                        <span>EXPORTAR COMO</span>
-                        <div class="render-mode-options" role="group" aria-label="Formato da renderização">
-                            <button id="renderVideoMode" class="render-mode-option active" type="button" aria-pressed="true" title="Exportar vídeo com ou sem áudio"><span aria-hidden="true">▣</span> Vídeo</button>
-                            <button id="renderAudioMode" class="render-mode-option" type="button" aria-pressed="false" title="Exportar somente a faixa de áudio em MP3"><span aria-hidden="true">♫</span> Somente áudio</button>
-                        </div>
-                    </div>
-                    <div class="timeline-toolbar">
+<div class="timeline-toolbar">
                         <div class="timeline-title"><span class="eyebrow">LINHA DO TEMPO</span><strong>Seleção do corte</strong></div>
                         <div class="toolbar-actions">
                             <button id="shortcutsToggle" class="tracks-toggle icon-button" type="button" aria-expanded="false" aria-controls="shortcutsPanel" aria-label="Atalhos de teclado" title="Atalhos de teclado (?)"><span aria-hidden="true">⌨</span></button>
@@ -106,6 +99,7 @@
                                 <button id="loopToggle" class="mark-button active" type="button" aria-pressed="true" title="Repetir a seleção durante a reprodução (R)">↻ Repetir</button>
                         </div>
                     </div>
+                    <div id="editorStatusArea" class="status-text editor-status-bar" role="status" aria-live="polite" style="display:none;"></div>
                     <section id="shortcutsPanel" class="shortcuts-panel" aria-label="Atalhos de teclado" hidden>
                         <div class="shortcuts-body">
                             <div class="shortcuts-group">
@@ -141,16 +135,58 @@
                 </div>
                  <div class="navigation-links">
                     <a href="#step-1-upload" class="nav-button secondary" title="Voltar para escolher outro vídeo">Voltar</a>
-                    <a href="#step-3-result" class="nav-button primary process-link" title="Criar o corte e abrir o download">Criar corte</a>
+                    <a href="#step-3-result" class="nav-button primary" title="Avançar para escolher formato e exportar">Avançar para exportação →</a>
                 </div>
             </div>
         </section>
 
         <section id="step-3-result" class="step app-view">
             <div class="step-content">
-                <span class="eyebrow">EXPORTAÇÃO</span><h2>Seu corte</h2>
-                <p id="resultDescription">Renderize o trecho selecionado para preparar seu arquivo.</p>
-                <button id="processButton" class="nav-button primary export-button" title="Renderizar e preparar o download">Preparar download</button>
+                <span class="eyebrow">EXPORTAÇÃO</span><h2>Exportar corte</h2>
+                <p id="resultDescription">Escolha o formato e prepare o arquivo final do trecho selecionado.</p>
+
+                <!-- Formulário de configuração da exportação -->
+                <div id="exportFormCard" class="export-form-card">
+                    <div class="export-form-group">
+                        <label class="export-form-label">FORMATO DE SAÍDA</label>
+                        <div class="output-format-selector" role="radiogroup" aria-label="Formato de saída">
+                            <label class="format-card active">
+                                <input type="radio" name="exportFormat" value="original" checked>
+                                <div class="format-card-content">
+                                    <div class="format-title">⚡ Original (Sem conversão)</div>
+                                    <div class="format-desc">Ultra rápido, 100% fidelidade, sem perda de qualidade.</div>
+                                </div>
+                            </label>
+
+                            <label class="format-card">
+                                <input type="radio" name="exportFormat" value="mp4">
+                                <div class="format-card-content">
+                                    <div class="format-title">🎬 Vídeo MP4 (Compatível)</div>
+                                    <div class="format-desc">Recodificado (H.264 + AAC) para tocar em qualquer player.</div>
+                                </div>
+                            </label>
+
+                            <label class="format-card" id="formatCardAudio">
+                                <input type="radio" name="exportFormat" value="audio">
+                                <div class="format-card-content">
+                                    <div class="format-title">♫ Somente Áudio (MP3)</div>
+                                    <div class="format-desc">Extrai apenas a trilha sonora em MP3 de alta qualidade.</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="export-form-group">
+                        <label for="customFilenameInput" class="export-form-label">NOME DO ARQUIVO (OPCIONAL)</label>
+                        <div class="filename-input-row">
+                            <input type="text" id="customFilenameInput" placeholder="Ex: meu_corte_favorito" maxlength="80">
+                            <span id="filenameExtensionBadge" class="filename-ext-badge">.mp4</span>
+                        </div>
+                    </div>
+
+                    <button id="processButton" class="nav-button primary export-button" title="Processar corte e preparar o download">⚡ Processar e preparar download</button>
+                </div>
+
                 <div id="statusArea" class="status-text" role="status" aria-live="polite"></div>
                 
                 <div id="resultPreviewContainer" class="result-preview-container" style="display:none;">
@@ -164,11 +200,6 @@
                     <button id="editAgainButton" type="button" class="nav-button secondary">↺ Fazer outro corte deste vídeo</button>
                     <button id="newVideoButton" type="button" class="nav-button secondary">✚ Novo vídeo (Limpar sessão)</button>
                 </div>
-
-                <details class="command-details">
-                    <summary>Detalhes técnicos</summary>
-                    <div id="command-area"><pre id="outputCommand"></pre></div>
-                </details>
 
                 <div class="navigation-links">
                     <a href="#step-2-editor" class="nav-button secondary">← Voltar ao editor</a>

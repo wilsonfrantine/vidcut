@@ -14,9 +14,10 @@ const VidCutApp = {
         hasAudioTrack: false,
         includeAudio: true,
         audioMuted: false,
-        outputMode: 'video',
+        outputMode: 'original', // 'original' (sem conversão), 'mp4' (compatível), 'audio' (mp3)
         isTimelineScrubbing: false,
         loopSelection: true,
+        customName: '',
         audioTrackDetails: null,
     },
 
@@ -34,10 +35,11 @@ const VidCutApp = {
             timelineSlider: document.getElementById('timeline-slider'),
             startTimeInput: document.getElementById('startTimeInput'),
             endTimeInput: document.getElementById('endTimeInput'),
-            outputCommand: document.getElementById('outputCommand'),
-            commandArea: document.getElementById('command-area'),
+            
+            
             processButton: document.getElementById('processButton'),
             statusArea: document.getElementById('statusArea'),
+            editorStatusArea: document.getElementById('editorStatusArea'),
             downloadArea: document.getElementById('downloadArea'),
             audioMuteToggle: document.getElementById('audioMuteToggle'),
             audioRemoveToggle: document.getElementById('audioRemoveToggle'),
@@ -48,13 +50,15 @@ const VidCutApp = {
             timelineTracks: document.getElementById('timelineTracks'),
             toggleTracks: document.getElementById('toggleTracks'),
             audioSelectionOverlay: document.getElementById('audioSelectionOverlay'),
-            renderVideoMode: document.getElementById('renderVideoMode'),
-            renderAudioMode: document.getElementById('renderAudioMode'),
             videoTrackPreviews: document.getElementById('videoTrackPreviews'),
             videoSelectionOverlay: document.getElementById('videoSelectionOverlay'),
             audioWaveform: document.getElementById('audioWaveform'),
             videoPlayhead: document.getElementById('videoPlayhead'),
             audioPlayhead: document.getElementById('audioPlayhead'),
+            customFilenameInput: document.getElementById('customFilenameInput'),
+            filenameExtensionBadge: document.getElementById('filenameExtensionBadge'),
+            exportFormCard: document.getElementById('exportFormCard'),
+            formatCardAudio: document.getElementById('formatCardAudio'),
             resultPreviewContainer: document.getElementById('resultPreviewContainer'),
             resultMediaWrapper: document.getElementById('resultMediaWrapper'),
             resultMetaInfo: document.getElementById('resultMetaInfo'),
@@ -148,8 +152,20 @@ const VidCutApp = {
             this.updateExportDescription();
             this.generateCommand();
         });
-        this.DOM.renderVideoMode.addEventListener('click', () => this.setOutputMode('video'));
-        this.DOM.renderAudioMode.addEventListener('click', () => this.setOutputMode('audio'));
+        // Seleção de formato de saída na tela de exportação
+        document.querySelectorAll('input[name="exportFormat"]').forEach(radio => {
+            radio.addEventListener('change', e => {
+                if (e.target.checked) {
+                    this.setOutputMode(e.target.value);
+                }
+            });
+        });
+        if (this.DOM.customFilenameInput) {
+            this.DOM.customFilenameInput.addEventListener('input', e => {
+                this.state.customName = e.target.value.trim();
+                this.generateCommand();
+            });
+        }
         this.DOM.toggleTracks.addEventListener('click', () => {
             const expanded = this.DOM.toggleTracks.getAttribute('aria-expanded') === 'true';
             this.DOM.toggleTracks.setAttribute('aria-expanded', String(!expanded));
@@ -215,10 +231,9 @@ const VidCutApp = {
     async processVideo() {
         this.DOM.videoPlayer.pause();
         if (!this.state.videoPath || this.state.isProcessing) return;
-        if (!Number.isFinite(this.state.start) || !Number.isFinite(this.state.end) ||
-            this.state.start < 0 || this.state.end > this.state.videoDuration ||
-            this.state.end <= this.state.start) {
-            this.showProcessError('Escolha um intervalo válido: o início deve vir antes do fim e estar dentro do vídeo.');
+        const validationErr = this.getIntervalError();
+        if (validationErr) {
+            this.showProcessError(validationErr);
             return;
         }
         if (this.state.outputMode === 'audio' && (!this.state.hasAudioTrack || !this.state.includeAudio)) {
@@ -243,7 +258,8 @@ const VidCutApp = {
                     end: this.state.end,
                     includeAudio: this.state.includeAudio,
                     muteAudio: this.state.audioMuted,
-                    outputMode: this.state.outputMode
+                    outputMode: this.state.outputMode,
+                    customName: this.state.customName
                 })
             });
             const result = await response.json();
@@ -266,7 +282,7 @@ const VidCutApp = {
         this.state.hasAudioTrack = Boolean(result.mediaInfo?.hasAudio);
         this.state.includeAudio = this.state.hasAudioTrack;
         this.state.audioMuted = false;
-        this.state.outputMode = 'video';
+        this.state.outputMode = 'original';
         this.state.audioTrackDetails = result.mediaInfo || {};
         this.DOM.audioTrackInfo.classList.toggle('unavailable', !this.state.hasAudioTrack);
         this.DOM.timelineTracks.hidden = false;
@@ -290,7 +306,7 @@ const VidCutApp = {
         if (result.mediaInfo?.audioWaveform) {
             this.DOM.audioWaveform.src = `/videos/${encodeURIComponent(result.mediaInfo.audioWaveform)}`;
         }
-        this.setOutputMode('video');
+        this.setOutputMode('original');
         this.updateAudioTrackActions();
         this.updateExportDescription();
         this.DOM.videoPlayer.removeAttribute('src');
@@ -353,16 +369,37 @@ const VidCutApp = {
         return value.split(':').reduce((total, part) => total * 60 + Number(part), 0);
     },
 
-    // Define início ou fim respeitando os limites do vídeo
+    // Define início ou fim com validações claras e feedback ao usuário
     applyBoundary(type, candidate) {
-        const value = Math.min(this.state.videoDuration, Math.max(0, candidate));
-        if (type === 'start') this.state.start = Math.min(value, this.state.end - 0.01);
-        else this.state.end = Math.max(value, this.state.start + 0.01);
-        this.state.start = Math.max(0, this.state.start);
-        this.state.end = Math.min(this.state.videoDuration, this.state.end);
+        if (!Number.isFinite(candidate) || candidate < 0) {
+            this.showTimeError('O tempo deve ser um valor positivo.');
+            return;
+        }
+
+        if (candidate > this.state.videoDuration) {
+            this.showTimeError(`O tempo limite não pode ultrapassar o tamanho do vídeo (${this.formatTime(this.state.videoDuration)}).`);
+            return;
+        }
+
+        if (type === 'start') {
+            if (candidate >= this.state.end) {
+                this.showTimeError(`O início (${this.formatTime(candidate)}) não pode ser igual ou posterior ao fim (${this.formatTime(this.state.end)}).`);
+                this.updateTimelineUI();
+                return;
+            }
+            this.state.start = candidate;
+        } else {
+            if (candidate <= this.state.start) {
+                this.showTimeError(`O fim (${this.formatTime(candidate)}) não pode ser igual ou anterior ao início (${this.formatTime(this.state.start)}).`);
+                this.updateTimelineUI();
+                return;
+            }
+            this.state.end = candidate;
+        }
+
+        this.clearTimeError();
         this.DOM.timelineSlider.noUiSlider.set([this.state.start, this.state.end]);
         this.updateTimelineUI();
-        this.DOM.statusArea.innerText = '';
     },
 
     handleTimeInputChange(type) {
@@ -478,15 +515,26 @@ const VidCutApp = {
         }
         this.DOM.commandArea.style.display = 'block';
         if (this.state.start >= this.state.end) {
-            this.DOM.outputCommand.innerText = 'O início precisa ser anterior ao fim.';
+            
             return;
         }
         const duration = this.state.end - this.state.start;
-        const outputFilename = `corte_${this.state.videoPath.replace(/\.[^.]+$/, '')}_${Math.round(this.state.start * 1000)}-${Math.round(this.state.end * 1000)}.mp4`;
-        const cmd = this.state.outputMode === 'audio'
-            ? `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -vn -map 0:a:0 -c:a libmp3lame -q:a 2 "${outputFilename.replace(/\.mp4$/, '.mp3')}"`
-            : `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -map 0:v:0 ${this.state.includeAudio ? `-map 0:a? ${this.state.audioMuted ? '-af volume=0 ' : ''}-c:a aac -b:a 192k` : '-an'} -c:v libx264 -preset veryfast -crf 18 -movflags +faststart "${outputFilename}"`;
-        this.DOM.outputCommand.innerText = cmd;
+        const origExt = this.state.videoPath ? (this.state.videoPath.split('.').pop() || 'mp4').toLowerCase() : 'mp4';
+        const ext = this.state.outputMode === 'audio' ? 'mp3' : (this.state.outputMode === 'original' ? origExt : 'mp4');
+        const baseName = this.state.customName 
+            ? this.state.customName.replace(/[\\/:*?"<>|\x00-\x1F]/g, '_')
+            : `corte_${this.state.videoPath.replace(/\.[^.]+$/, '')}_${Math.round(this.state.start * 1000)}-${Math.round(this.state.end * 1000)}`;
+        const outputFilename = `${baseName}.${ext}`;
+
+        let cmd = '';
+        if (this.state.outputMode === 'audio') {
+            cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -vn -map 0:a:0 -c:a libmp3lame -q:a 2 "${outputFilename}"`;
+        } else if (this.state.outputMode === 'original' && this.state.includeAudio && !this.state.audioMuted) {
+            cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -c copy -map 0 "${outputFilename}"`;
+        } else {
+            cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -map 0:v:0 ${this.state.includeAudio ? `-map 0:a? ${this.state.audioMuted ? '-af volume=0 ' : ''}-c:a aac -b:a 192k` : '-an'} -c:v libx264 -preset veryfast -crf 18 -movflags +faststart "${outputFilename}"`;
+        }
+        
     },
 
     displayResults(result) {
@@ -587,12 +635,29 @@ const VidCutApp = {
             this.state.includeAudio = true;
             this.state.audioMuted = false;
         }
-        const audioSelected = mode === 'audio';
-        this.DOM.renderAudioMode.classList.toggle('active', audioSelected);
-        this.DOM.renderAudioMode.setAttribute('aria-pressed', String(audioSelected));
-        this.DOM.renderAudioMode.disabled = !this.state.hasAudioTrack;
-        this.DOM.renderVideoMode.classList.toggle('active', !audioSelected);
-        this.DOM.renderVideoMode.setAttribute('aria-pressed', String(!audioSelected));
+        
+        // Atualiza radio buttons e cards visuais
+        document.querySelectorAll('.format-card').forEach(card => {
+            const input = card.querySelector('input[name="exportFormat"]');
+            if (input) {
+                const isSelected = input.value === mode;
+                input.checked = isSelected;
+                card.classList.toggle('active', isSelected);
+            }
+        });
+
+        // Atualiza extensão exibida no badge
+        if (this.DOM.filenameExtensionBadge) {
+            const origExt = this.state.videoPath ? (this.state.videoPath.split('.').pop() || 'mp4').toLowerCase() : 'mp4';
+            const ext = mode === 'audio' ? 'mp3' : (mode === 'original' ? origExt : 'mp4');
+            this.DOM.filenameExtensionBadge.textContent = `.${ext}`;
+        }
+
+        if (this.DOM.formatCardAudio) {
+            this.DOM.formatCardAudio.style.opacity = this.state.hasAudioTrack ? '1' : '0.4';
+            this.DOM.formatCardAudio.querySelector('input').disabled = !this.state.hasAudioTrack;
+        }
+
         this.updateAudioTrackActions();
         this.updateExportDescription();
         this.generateCommand();
@@ -600,14 +665,10 @@ const VidCutApp = {
 
     updateExportDescription() {
         const description = this.state.outputMode === 'audio'
-            ? 'Somente a faixa de áudio selecionada será exportada como MP3.'
-            : !this.state.hasAudioTrack
-                ? 'Este vídeo não possui áudio; o arquivo será exportado sem som.'
-                : !this.state.includeAudio
-                    ? 'A faixa de áudio foi removida. O vídeo será exportado sem som.'
-                    : this.state.audioMuted
-                        ? 'A faixa de áudio será mantida, mas ficará silenciada.'
-                        : 'O vídeo e a faixa de áudio serão exportados juntos.';
+            ? 'Somente a faixa de áudio selecionada será exportada em MP3.'
+            : this.state.outputMode === 'original'
+                ? '⚡ O trecho selecionado será extraído instantaneamente no formato original sem perda de qualidade (-c copy).'
+                : 'O vídeo será recodificado em formato MP4 padrão (H.264 + AAC) para compatibilidade universal.';
         document.getElementById('resultDescription').innerText = description;
     },
 
@@ -664,12 +725,49 @@ const VidCutApp = {
     escapeHtml(value) {
         return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
     },
-    showTimeError(message) {
-        this.DOM.statusArea.innerText = message;
-        this.DOM.statusArea.className = 'status-text error';
+    getIntervalError() {
+        if (!Number.isFinite(this.state.start) || this.state.start < 0) {
+            return 'Ponto de início inválido: informe um tempo maior ou igual a zero.';
+        }
+        if (!Number.isFinite(this.state.end) || this.state.end <= 0) {
+            return 'Ponto de término inválido: informe um tempo maior que zero.';
+        }
+        if (this.state.end > this.state.videoDuration + 0.05) {
+            return `O fim selecionado (${this.formatTime(this.state.end)}) ultrapassa a duração total do vídeo (${this.formatTime(this.state.videoDuration)}).`;
+        }
+        if (this.state.start >= this.state.end) {
+            return `O tempo de início (${this.formatTime(this.state.start)}) precisa ser estritamente menor que o fim (${this.formatTime(this.state.end)}).`;
+        }
+        if (this.state.end - this.state.start < 0.1) {
+            return 'O trecho selecionado é muito curto (mínimo de 0,1 segundo).';
+        }
+        return null;
     },
+
+    showTimeError(message) {
+        if (this.DOM.editorStatusArea) {
+            this.DOM.editorStatusArea.textContent = `⚠ ${message}`;
+            this.DOM.editorStatusArea.style.display = 'block';
+            this.DOM.editorStatusArea.className = 'status-text editor-status-bar error';
+        }
+        if (this.DOM.statusArea) {
+            this.DOM.statusArea.innerText = message;
+            this.DOM.statusArea.className = 'status-text error';
+        }
+    },
+
+    clearTimeError() {
+        if (this.DOM.editorStatusArea) {
+            this.DOM.editorStatusArea.style.display = 'none';
+            this.DOM.editorStatusArea.textContent = '';
+        }
+        if (this.DOM.statusArea) {
+            this.DOM.statusArea.innerText = '';
+        }
+    },
+
     showProcessError(message) {
-        this.DOM.statusArea.innerText = message;
+        this.DOM.statusArea.innerText = `⚠ ${message}`;
         this.DOM.statusArea.className = 'status-text error';
         this.DOM.statusArea.style.color = 'var(--error-color, #dc2626)';
         this.DOM.downloadArea.style.display = 'none';
