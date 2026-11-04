@@ -39,6 +39,16 @@
         // Desabilita inputs se estiver ausente
         const ytInput = document.getElementById('youtubeUrlInput');
         const ytBtn = document.getElementById('loadYoutubeVideo');
+        const searchModeBtn = document.querySelector('.mode-selector-btn[data-mode="search"]');
+        const editorSearchBtn = document.getElementById('editorSearchBtn');
+        if (searchModeBtn) {
+            searchModeBtn.disabled = isMissing;
+            searchModeBtn.title = isMissing ? 'Indisponível: yt-dlp não instalado' : '';
+        }
+        if (editorSearchBtn) {
+            editorSearchBtn.disabled = isMissing;
+            editorSearchBtn.title = isMissing ? 'Busca indisponível: yt-dlp não instalado' : 'Buscar vídeo na web (S)';
+        }
         if (ytInput) ytInput.disabled = isMissing;
         if (ytBtn) ytBtn.disabled = isMissing;
     }

@@ -76,10 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             VidCutApp.state.currentMode = button.dataset.mode;
-            const isLocal = button.dataset.mode === 'local';
-            localFileArea.style.display = isLocal ? 'block' : 'none';
-            youtubeLinkArea.style.display = isLocal ? 'none' : 'block';
-            if (!isLocal) youtubeUrlInput.focus();
+            const mode = button.dataset.mode;
+            localFileArea.style.display = mode === 'local' ? 'block' : 'none';
+            youtubeLinkArea.style.display = mode === 'youtube' ? 'block' : 'none';
+            const searchArea = document.getElementById('search-video-area');
+            if (searchArea) searchArea.style.display = mode === 'search' ? 'block' : 'none';
+            if (mode === 'youtube') youtubeUrlInput.focus();
+            if (mode === 'search') {
+                const sInput = document.getElementById('searchInput');
+                if (sInput) sInput.focus();
+            }
         });
     });
 
@@ -193,5 +199,117 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         setView('step-2-editor');
     });
+
+
+    // Funções de busca de vídeos via yt-dlp
+    async function executeSearch(query, listEl, statusEl, onSelect) {
+        if (!query.trim()) return;
+        statusEl.style.display = 'block';
+        statusEl.innerHTML = `<span>Pesquisando vídeos…</span><span class="loading-dots"></span>`;
+        statusEl.className = 'search-status loading';
+        listEl.innerHTML = '';
+
+        try {
+            const resp = await fetch(`/buscar-videos?q=${encodeURIComponent(query.trim())}&limit=8`);
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.message || 'Falha ao buscar vídeos.');
+
+            if (!data.results || data.results.length === 0) {
+                statusEl.innerHTML = 'Nenhum vídeo encontrado para este termo.';
+                statusEl.className = 'search-status';
+                return;
+            }
+
+            statusEl.style.display = 'none';
+            listEl.innerHTML = '';
+
+            data.results.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'search-result-card';
+                const durationText = VidCutApp.formatTime ? VidCutApp.formatTime(video.duration) : `${video.duration}s`;
+
+                card.innerHTML = `
+                    <div class="search-thumb-wrap">
+                        <img src="${video.thumbnail}" alt="" loading="lazy">
+                        <span class="search-duration-badge">${durationText}</span>
+                    </div>
+                    <div class="search-card-info">
+                        <h4 class="search-card-title" title="${video.title}">${video.title}</h4>
+                        <div class="search-card-meta">${video.channel}</div>
+                        <button class="nav-button primary search-import-btn" type="button">Importar para editar →</button>
+                    </div>
+                `;
+
+                card.querySelector('.search-import-btn').addEventListener('click', () => {
+                    onSelect(video);
+                });
+
+                listEl.appendChild(card);
+            });
+
+        } catch (err) {
+            statusEl.innerHTML = `⚠ ${err.message}`;
+            statusEl.className = 'search-status error';
+        }
+    }
+
+    // Busca no Passo 1 (Origem)
+    const searchForm = document.getElementById('searchVideoForm');
+    const searchInput = document.getElementById('searchInput');
+    const searchList = document.getElementById('searchResultsList');
+    const searchStatus = document.getElementById('searchResultsStatus');
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            executeSearch(searchInput.value, searchList, searchStatus, (video) => {
+                VidCutApp.downloadFromYouTube(video.url);
+            });
+        });
+    }
+
+    // Modal de Busca no Passo 2 (Editor)
+    const searchModal = document.getElementById('searchModal');
+    const editorSearchBtn = document.getElementById('editorSearchBtn');
+    const closeSearchModal = document.getElementById('closeSearchModal');
+    const modalSearchForm = document.getElementById('modalSearchForm');
+    const modalSearchInput = document.getElementById('modalSearchInput');
+    const modalSearchResults = document.getElementById('modalSearchResults');
+    const modalSearchStatus = document.getElementById('modalSearchStatus');
+
+    function openModal() {
+        if (!searchModal) return;
+        searchModal.style.display = 'flex';
+        modalSearchInput.value = '';
+        modalSearchResults.innerHTML = '';
+        modalSearchStatus.style.display = 'none';
+        modalSearchInput.focus();
+    }
+
+    function closeModal() {
+        if (!searchModal) return;
+        searchModal.style.display = 'none';
+    }
+
+    if (editorSearchBtn) editorSearchBtn.addEventListener('click', openModal);
+    if (closeSearchModal) closeSearchModal.addEventListener('click', closeModal);
+    if (searchModal) {
+        searchModal.addEventListener('click', (e) => {
+            if (e.target === searchModal) closeModal();
+        });
+    }
+
+    if (modalSearchForm) {
+        modalSearchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, (video) => {
+                closeModal();
+                VidCutApp.downloadFromYouTube(video.url);
+            });
+        });
+    }
+
+    window.VidCutUI.openSearchModal = openModal;
+    window.VidCutUI.closeSearchModal = closeModal;
 
 });

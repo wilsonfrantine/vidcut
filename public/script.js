@@ -466,6 +466,11 @@ const VidCutApp = {
             o: () => this.markBoundary('end'),
             r: () => this.toggleLoop(),
             '?': () => document.getElementById('shortcutsToggle').click(),
+            s: () => {
+                if (window.VidCutUI && window.VidCutUI.openSearchModal) {
+                    window.VidCutUI.openSearchModal();
+                }
+            },
             j: () => this.seekBy(-5),
             l: () => this.seekBy(5),
             ArrowLeft: () => this.seekBy(event.shiftKey ? -frame : -1),
@@ -509,13 +514,11 @@ const VidCutApp = {
     },
 
     generateCommand() {
-        if (!this.state.videoPath) {
-            this.DOM.commandArea.style.display = 'none';
+        if (!this.state.videoPath || !this.DOM.commandArea) {
             return;
         }
         this.DOM.commandArea.style.display = 'block';
         if (this.state.start >= this.state.end) {
-            
             return;
         }
         const duration = this.state.end - this.state.start;

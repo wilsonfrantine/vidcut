@@ -165,6 +165,53 @@ app.post('/limpar-sessao', (req, res) => {
 // Rota de Processamento
 // server.js -> ROTA CORRIGIDA
 
+// Rota de Busca de Vídeos via yt-dlp
+app.get('/buscar-videos', (req, res) => {
+    const query = String(req.query.q || '').trim();
+    if (!query) {
+        return res.status(400).json({ message: 'Informe um termo de busca.' });
+    }
+
+    const maxResults = Math.min(Math.max(Number(req.query.limit) || 6, 1), 12);
+    const searchTarget = `ytsearch${maxResults}:${query}`;
+    const searchArgs = ['--flat-playlist', '--dump-json', searchTarget];
+
+    const IS_RUNNING_IN_WSL = !USE_WSL;
+    const command = IS_RUNNING_IN_WSL ? bin.ytdlp : 'wsl';
+    const args = IS_RUNNING_IN_WSL ? searchArgs : [bin.ytdlp, ...searchArgs];
+
+    execFile(command, args, { timeout: 12000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Erro ao buscar vídeos com yt-dlp: ${error.message}`);
+            return res.status(500).json({ 
+                message: 'Não foi possível realizar a busca de vídeos.', 
+                ...toolFailure(error, stderr, 'yt-dlp') 
+            });
+        }
+
+        const results = [];
+        const lines = String(stdout || '').split('\n');
+        for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+                const item = JSON.parse(line);
+                const id = item.id;
+                if (!id) continue;
+                results.push({
+                    id,
+                    title: item.title || 'Sem título',
+                    url: item.url || `https://www.youtube.com/watch?v=${id}`,
+                    duration: Number(item.duration) || 0,
+                    channel: item.channel || item.uploader || 'Canal desconhecido',
+                    thumbnail: item.thumbnail || (item.thumbnails && item.thumbnails[0]?.url) || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`
+                });
+            } catch (_) {}
+        }
+
+        res.status(200).json({ results });
+    });
+});
+
 app.post('/download-from-youtube', (req, res) => {
     const { youtubeUrl } = req.body;
     if (!youtubeUrl) {

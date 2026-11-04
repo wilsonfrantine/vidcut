@@ -43,6 +43,9 @@
                     <button class="mode-selector-btn" data-mode="youtube" aria-pressed="false">
                         <span class="icon">▷</span> Link da web
                     </button>
+                    <button class="mode-selector-btn" data-mode="search" aria-pressed="false">
+                        <span class="icon">🔍</span> Buscar vídeos
+                    </button>
                 </div>
 
                 <div id="source-input-area">
@@ -67,6 +70,21 @@
                             <button id="loadYoutubeVideo" class="nav-button primary">Baixar para editar <span>→</span></button>
                         </div>
                     </div>
+                    <div id="search-video-area" style="display: none;">
+                        <div class="search-panel">
+                            <span class="upload-icon">🔍</span>
+                            <strong>Pesquise vídeos na web</strong>
+                            <span class="file-hint">Digite o que procura para pesquisar diretamente e importar para o editor</span>
+                            
+                            <form id="searchVideoForm" class="search-input-row" onsubmit="return false;">
+                                <input type="search" id="searchInput" placeholder="Ex: podcast tecnologia, lofi chill, trailer filme..." aria-label="Termo de pesquisa">
+                                <button id="searchSubmitBtn" class="nav-button primary" type="submit">Buscar</button>
+                            </form>
+
+                            <div id="searchResultsStatus" class="search-status" style="display:none;"></div>
+                            <div id="searchResultsList" class="search-results-list"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="uploadStatus" class="status-text" role="status" aria-live="polite"></div>
@@ -83,6 +101,7 @@
 <div class="timeline-toolbar">
                         <div class="timeline-title"><span class="eyebrow">LINHA DO TEMPO</span><strong>Seleção do corte</strong></div>
                         <div class="toolbar-actions">
+                            <button id="editorSearchBtn" class="tracks-toggle icon-button" type="button" aria-label="Buscar e trocar vídeo" title="Buscar vídeo na web (S)"><span aria-hidden="true">🔍</span></button>
                             <button id="shortcutsToggle" class="tracks-toggle icon-button" type="button" aria-expanded="false" aria-controls="shortcutsPanel" aria-label="Atalhos de teclado" title="Atalhos de teclado (?)"><span aria-hidden="true">⌨</span></button>
                             <button id="toggleTracks" class="tracks-toggle icon-button" type="button" aria-expanded="true" aria-label="Ocultar trilhas" title="Ocultar trilhas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4"/></svg></button>
                         </div>
@@ -117,6 +136,7 @@
                                     <li><span class="keys"><kbd>I</kbd></span><span>Marcar início</span></li>
                                     <li><span class="keys"><kbd>O</kbd></span><span>Marcar fim</span></li>
                                     <li><span class="keys"><kbd>R</kbd></span><span>Repetir seleção</span></li>
+                                    <li><span class="keys"><kbd>S</kbd></span><span>Buscar vídeo na web</span></li>
                                     <li><span class="keys"><kbd>?</kbd></span><span>Mostrar / ocultar atalhos</span></li>
                                 </ul>
                             </div>
@@ -236,6 +256,28 @@
                 </div>
             </div>
         </section>
+    
+    <!-- Modal Spotlight de Busca de Vídeo dentro do Editor -->
+    <div id="searchModal" class="search-modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
+        <div class="search-modal-card">
+            <div class="search-modal-header">
+                <div>
+                    <h3 id="searchModalTitle">Buscar vídeo na web</h3>
+                    <p>Pesquise e carregue um novo vídeo diretamente no editor</p>
+                </div>
+                <button id="closeSearchModal" class="icon-button close-modal-btn" type="button" aria-label="Fechar busca">✕</button>
+            </div>
+
+            <form id="modalSearchForm" class="search-input-row" onsubmit="return false;">
+                <input type="search" id="modalSearchInput" placeholder="Ex: gameplay, tutorial python, música..." aria-label="Buscar vídeo">
+                <button id="modalSearchSubmitBtn" class="nav-button primary" type="submit">Buscar</button>
+            </form>
+
+            <div id="modalSearchStatus" class="search-status" style="display:none;"></div>
+            <div id="modalSearchResults" class="search-results-list modal-results"></div>
+        </div>
+    </div>
+
     </main>
 
     <script src="vendor/nouislider/nouislider.min.js"></script>
