@@ -1,0 +1,93 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const http = require('node:http');
+const { spawn } = require('node:child_process');
+
+let serverProcess;
+const PORT = 3000;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+
+function request(path, options = {}) {
+    return new Promise((resolve, reject) => {
+        const req = http.request(`${BASE_URL}${path}`, options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
+        });
+        req.on('error', reject);
+        if (options.body) req.write(options.body);
+        req.end();
+    });
+}
+
+test.before(async () => {
+    // Inicia o servidor para a bateria de testes
+    serverProcess = spawn('node', ['server.js'], { cwd: process.cwd() });
+    
+    // Aguarda o servidor estar pronto
+    for (let i = 0; i < 30; i++) {
+        try {
+            await request('/');
+            return;
+        } catch (_) {
+            await new Promise(r => setTimeout(r, 200));
+        }
+    }
+    throw new Error('Servidor não iniciou a tempo para os testes');
+});
+
+test.after(() => {
+    if (serverProcess) {
+        serverProcess.kill('SIGINT');
+    }
+});
+
+test('Segurança & Estáticos: Raiz responde 200 e serve o VidCut', async () => {
+    const res = await request('/');
+    assert.equal(res.status, 200);
+    assert.match(res.body, /VidCut/);
+    assert.match(res.body, /<title>VidCut/);
+});
+
+test('Segurança: Arquivos sensíveis do backend retornam 404', async () => {
+    const blockedFiles = ['/server.js', '/package.json', '/package-lock.json', '/deps.js', '/.gitignore'];
+    for (const file of blockedFiles) {
+        const res = await request(file);
+        assert.equal(res.status, 404, `Deveria bloquear acesso a ${file}`);
+    }
+});
+
+test('Vendor: Assets locais do noUiSlider são servidos corretamente', async () => {
+    const js = await request('/vendor/nouislider/nouislider.min.js');
+    assert.equal(js.status, 200);
+    const css = await request('/vendor/nouislider/nouislider.min.css');
+    assert.equal(css.status, 200);
+});
+
+test('Health: Endpoint /api/dependencies reporta integridade das ferramentas', async () => {
+    const res = await request('/api/dependencies');
+    assert.equal(res.status, 200);
+    const data = JSON.parse(res.body);
+    assert.ok(data.platform);
+    assert.ok(Array.isArray(data.dependencies));
+    assert.ok(data.dependencies.some(d => d.id === 'ffmpeg'));
+    assert.ok(data.dependencies.some(d => d.id === 'ytdlp'));
+});
+
+test('Validação: /processar-video recusa requisições sem arquivo ou com parâmetros inválidos', async () => {
+    const res = await request('/processar-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoPath: '', start: 0, end: 10 })
+    });
+    assert.equal(res.status, 400);
+    const data = JSON.parse(res.body);
+    assert.match(data.message, /arquivo de vídeo válido/i);
+});
+
+test('Sessão: /limpar-sessao esvazia pastas temporárias com sucesso', async () => {
+    const res = await request('/limpar-sessao', { method: 'POST' });
+    assert.equal(res.status, 200);
+    const data = JSON.parse(res.body);
+    assert.match(data.message, /sucesso/i);
+});
