@@ -277,7 +277,7 @@ const VidCutApp = {
 
     // UI Update Functions
     handleSuccessfulLoad(result) {
-        this.setLoadingState(false, 'Vídeo carregado. Preparando prévia…', 'var(--success-color)');
+        this.setLoadingState(false, 'Vídeo carregado com sucesso.', 'var(--success-color)');
         this.state.videoPath = result.filename;
         this.state.hasAudioTrack = Boolean(result.mediaInfo?.hasAudio);
         this.state.includeAudio = this.state.hasAudioTrack;
@@ -572,7 +572,7 @@ const VidCutApp = {
         this.DOM.downloadArea.innerHTML = '';
         const downloadLink = document.createElement('a');
         downloadLink.href = `/output/${encodeURIComponent(result.outputFile)}`;
-        downloadLink.innerText = this.state.outputMode === 'audio' ? '⬇ Baixar MP3' : '⬇ Baixar vídeo';
+        downloadLink.innerText = this.state.outputMode === 'audio' ? 'Baixar MP3' : 'Baixar vídeo';
         downloadLink.setAttribute('download', result.outputFile);
         downloadLink.className = 'download-button';
         this.DOM.downloadArea.appendChild(downloadLink);
@@ -670,7 +670,7 @@ const VidCutApp = {
         const description = this.state.outputMode === 'audio'
             ? 'Somente a faixa de áudio selecionada será exportada em MP3.'
             : this.state.outputMode === 'original'
-                ? '⚡ O trecho selecionado será extraído instantaneamente no formato original sem perda de qualidade (-c copy).'
+                ? 'O trecho selecionado será extraído instantaneamente no formato original sem perda de qualidade (-c copy).'
                 : 'O vídeo será recodificado em formato MP4 padrão (H.264 + AAC) para compatibilidade universal.';
         document.getElementById('resultDescription').innerText = description;
     },
@@ -704,17 +704,33 @@ const VidCutApp = {
     },
 
     setLoadingState(isLoading, message = '', color = 'orange') {
+        const overlay = document.getElementById('importOverlay');
+        const overlayTitle = document.getElementById('importTitle');
+        const overlaySub = document.getElementById('importSubtitle');
+        const overlayBar = document.getElementById('importProgressBar');
+        const overlayText = document.getElementById('importProgressText');
+
         if (isLoading) {
             if (message) {
                 this.DOM.uploadStatus.innerHTML = `<span>${this.escapeHtml(message)}</span><span class="loading-dots"></span>`;
                 this.DOM.uploadStatus.className = 'status-text loading';
             }
-            document.querySelectorAll('#youtube-link-area button, #file-upload-area label').forEach(el => el.style.pointerEvents = 'none');
+            if (overlay) {
+                overlay.style.display = 'flex';
+                if (overlayTitle) overlayTitle.textContent = message || 'Importando vídeo…';
+                if (overlaySub) overlaySub.textContent = 'Processando faixas e miniaturas no servidor…';
+                if (overlayBar) overlayBar.className = 'import-progress-bar animated';
+                if (overlayText) overlayText.textContent = 'Por favor, aguarde enquanto o vídeo é preparado…';
+            }
+            document.querySelectorAll('#youtube-link-area button, #file-upload-area label, #search-video-area button').forEach(el => el.style.pointerEvents = 'none');
         } else {
             this.DOM.uploadStatus.innerText = message;
             this.DOM.uploadStatus.className = 'status-text';
             this.DOM.uploadStatus.style.color = color;
-            document.querySelectorAll('#youtube-link-area button, #file-upload-area label').forEach(el => el.style.pointerEvents = 'auto');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+            document.querySelectorAll('#youtube-link-area button, #file-upload-area label, #search-video-area button').forEach(el => el.style.pointerEvents = 'auto');
         }
     },
     formatFileSize(bytes) {
@@ -749,7 +765,7 @@ const VidCutApp = {
 
     showTimeError(message) {
         if (this.DOM.editorStatusArea) {
-            this.DOM.editorStatusArea.textContent = `⚠ ${message}`;
+            this.DOM.editorStatusArea.textContent = `${message}`;
             this.DOM.editorStatusArea.style.display = 'block';
             this.DOM.editorStatusArea.className = 'status-text editor-status-bar error';
         }
@@ -770,7 +786,7 @@ const VidCutApp = {
     },
 
     showProcessError(message) {
-        this.DOM.statusArea.innerText = `⚠ ${message}`;
+        this.DOM.statusArea.innerText = `${message}`;
         this.DOM.statusArea.className = 'status-text error';
         this.DOM.statusArea.style.color = 'var(--error-color, #dc2626)';
         this.DOM.downloadArea.style.display = 'none';

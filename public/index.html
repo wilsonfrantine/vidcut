@@ -21,7 +21,7 @@
             <button class="tab-button active" data-view-target="step-1-upload" aria-current="page">Origem</button>
             <button class="tab-button" data-view-target="step-2-editor" disabled>Editor</button>
             <button class="tab-button" data-view-target="step-3-result" disabled>Download</button>
-            <button class="tab-button support-tab" data-view-target="credits-view">☕ Apoiar</button>
+            <button class="tab-button support-tab" data-view-target="credits-view"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg> Apoiar</button>
         </nav>
         <div class="nav-meta"><span class="local-badge"><span></span> Processamento local</span><button id="theme-toggle" class="theme-button" aria-label="Alternar tema"></button></div>
     </nav>
@@ -38,20 +38,20 @@
                 </div>
                 <div id="mode-selector">
                     <button class="mode-selector-btn active" data-mode="local" aria-pressed="true">
-                        <span class="icon">▧</span> Arquivo local
+                        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg> Arquivo local
                     </button>
                     <button class="mode-selector-btn" data-mode="youtube" aria-pressed="false">
-                        <span class="icon">▷</span> Link da web
+                        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Link da web
                     </button>
                     <button class="mode-selector-btn" data-mode="search" aria-pressed="false">
-                        <span class="icon">🔍</span> Buscar vídeos
+                        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Buscar vídeos
                     </button>
                 </div>
 
                 <div id="source-input-area">
                     <div id="local-file-area">
                         <label for="videoFile" id="file-upload-area">
-                            <span class="upload-icon">↑</span>
+                            <span class="upload-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span>
                             <strong>Arraste um vídeo ou <em>selecione um arquivo</em></strong>
                             <span class="file-hint">MP4, MOV, WebM e outros formatos de vídeo</span>
                             <input type="file" id="videoFile" accept="video/*,.mkv,.avi,.mov,.mp4,.webm" class="visually-hidden">
@@ -60,7 +60,7 @@
 
                     <div id="youtube-link-area" style="display: none;">
                         <div class="youtube-panel">
-                            <span class="upload-icon">▶</span>
+                            <span class="upload-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
                             <strong>Adicione um link de vídeo</strong>
                             <span class="file-hint">Cole o endereço aqui ou use Ctrl+V em qualquer lugar desta página</span>
                             <div class="youtube-url-row">
@@ -71,8 +71,8 @@
                         </div>
                     </div>
                     <div id="search-video-area" style="display: none;">
-                        <div class="search-panel">
-                            <span class="upload-icon">🔍</span>
+                        <div class="search-panel-container">
+                            <span class="upload-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
                             <strong>Pesquise vídeos na web</strong>
                             <span class="file-hint">Digite o que procura para pesquisar diretamente e importar para o editor</span>
                             
@@ -101,8 +101,8 @@
 <div class="timeline-toolbar">
                         <div class="timeline-title"><span class="eyebrow">LINHA DO TEMPO</span><strong>Seleção do corte</strong></div>
                         <div class="toolbar-actions">
-                            <button id="editorSearchBtn" class="tracks-toggle icon-button" type="button" aria-label="Buscar e trocar vídeo" title="Buscar vídeo na web (S)"><span aria-hidden="true">🔍</span></button>
-                            <button id="shortcutsToggle" class="tracks-toggle icon-button" type="button" aria-expanded="false" aria-controls="shortcutsPanel" aria-label="Atalhos de teclado" title="Atalhos de teclado (?)"><span aria-hidden="true">⌨</span></button>
+                            <button id="editorSearchBtn" class="tracks-toggle icon-button" type="button" aria-label="Buscar e trocar vídeo" title="Buscar vídeo na web (S)"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
+                            <button id="shortcutsToggle" class="tracks-toggle icon-button" type="button" aria-expanded="false" aria-controls="shortcutsPanel" aria-label="Atalhos de teclado" title="Atalhos de teclado (?)"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8"/></svg></button>
                             <button id="toggleTracks" class="tracks-toggle icon-button" type="button" aria-expanded="true" aria-label="Ocultar trilhas" title="Ocultar trilhas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4"/></svg></button>
                         </div>
                     </div>
@@ -113,9 +113,9 @@
                             <span id="selectionDuration" class="selection-duration">0:00,00 selecionados</span>
                         </div>
                         <div class="mark-buttons">
-                                <button id="markStart" class="mark-button" type="button" title="Marcar início no ponto atual (I)">⇤ Marcar início</button>
-                                <button id="markEnd" class="mark-button" type="button" title="Marcar fim no ponto atual (O)">Marcar fim ⇥</button>
-                                <button id="loopToggle" class="mark-button active" type="button" aria-pressed="true" title="Repetir a seleção durante a reprodução (R)">↻ Repetir</button>
+                                <button id="markStart" class="mark-button" type="button" title="Marcar início no ponto atual (I)"><svg class="btn-svg" viewBox="0 0 24 24"><path d="M4 6v12M20 12H8m4-4-4 4 4 4"/></svg> Marcar início</button>
+                                <button id="markEnd" class="mark-button" type="button" title="Marcar fim no ponto atual (O)">Marcar fim <svg class="btn-svg" viewBox="0 0 24 24"><path d="M20 6v12M4 12h12m-4-4 4 4-4 4"/></svg></button>
+                                <button id="loopToggle" class="mark-button active" type="button" aria-pressed="true" title="Repetir a seleção durante a reprodução (R)"><svg class="btn-svg" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15.5-6.36L2 9m0-6v6h6M3 12a9 9 0 0 0 15.5 6.36L22 15m0 6v-6h-6"/></svg> Repetir</button>
                         </div>
                     </div>
                     <div id="editorStatusArea" class="status-text editor-status-bar" role="status" aria-live="polite" style="display:none;"></div>
@@ -173,7 +173,7 @@
                             <label class="format-card active">
                                 <input type="radio" name="exportFormat" value="original" checked>
                                 <div class="format-card-content">
-                                    <div class="format-title">⚡ Original (Sem conversão)</div>
+                                    <div class="format-title"><svg class="inline-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Original (Sem conversão)</div>
                                     <div class="format-desc">Ultra rápido, 100% fidelidade, sem perda de qualidade.</div>
                                 </div>
                             </label>
@@ -181,7 +181,7 @@
                             <label class="format-card">
                                 <input type="radio" name="exportFormat" value="mp4">
                                 <div class="format-card-content">
-                                    <div class="format-title">🎬 Vídeo MP4 (Compatível)</div>
+                                    <div class="format-title"><svg class="inline-icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/></svg> Vídeo MP4 (Compatível)</div>
                                     <div class="format-desc">Recodificado (H.264 + AAC) para tocar em qualquer player.</div>
                                 </div>
                             </label>
@@ -189,7 +189,7 @@
                             <label class="format-card" id="formatCardAudio">
                                 <input type="radio" name="exportFormat" value="audio">
                                 <div class="format-card-content">
-                                    <div class="format-title">♫ Somente Áudio (MP3)</div>
+                                    <div class="format-title"><svg class="inline-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm12 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg> Somente Áudio (MP3)</div>
                                     <div class="format-desc">Extrai apenas a trilha sonora em MP3 de alta qualidade.</div>
                                 </div>
                             </label>
@@ -204,7 +204,7 @@
                         </div>
                     </div>
 
-                    <button id="processButton" class="nav-button primary export-button" title="Processar corte e preparar o download">⚡ Processar e preparar download</button>
+                    <button id="processButton" class="nav-button primary export-button" title="Processar corte e preparar o download">Processar e preparar download</button>
                 </div>
 
                 <div id="statusArea" class="status-text" role="status" aria-live="polite"></div>
@@ -257,6 +257,20 @@
             </div>
         </section>
     
+
+    <!-- Overlay Global de Importação / Download com barra de progresso -->
+    <div id="importOverlay" class="import-overlay" style="display: none;" role="status" aria-live="assertive">
+        <div class="import-card">
+            <div class="import-spinner"></div>
+            <h3 id="importTitle" class="import-title">Importando vídeo…</h3>
+            <p id="importSubtitle" class="import-subtitle">Baixando dados e processando faixas no servidor</p>
+            <div class="import-progress-bar-container">
+                <div id="importProgressBar" class="import-progress-bar"></div>
+            </div>
+            <div id="importProgressText" class="import-progress-text">Aguarde um momento…</div>
+        </div>
+    </div>
+
     <!-- Modal Spotlight de Busca de Vídeo dentro do Editor -->
     <div id="searchModal" class="search-modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
         <div class="search-modal-card">

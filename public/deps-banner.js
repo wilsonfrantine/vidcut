@@ -29,7 +29,7 @@
         warnBox.className = `deps-contextual-box ${isMissing ? 'error' : 'warning'}`;
         warnBox.innerHTML = `
             <div class="deps-contextual-header">
-                <strong>${isMissing ? '⛔ Download por link indisponível' : '⚠ Atenção com yt-dlp'}</strong>
+                <strong>${isMissing ? 'Download por link indisponível' : 'Atenção com yt-dlp'}</strong>
             </div>
             <p class="deps-contextual-msg">${esc(ytdlpDep.message)}</p>
             ${buildHintsBlock(ytdlpDep, platform)}
@@ -70,7 +70,7 @@
         banner.id = 'deps-banner';
         banner.setAttribute('role', 'alert');
         banner.innerHTML = `
-            <div class="deps-header"><strong>⚠ Dependência essencial com problema</strong>
+            <div class="deps-header"><strong>Dependência essencial com problema</strong>
                 <span><button type="button" id="deps-recheck">Verificar novamente</button><button type="button" id="deps-close" aria-label="Fechar">×</button></span></div>
             <ul>${ffmpegProblems.map(dep => `<li>${esc(dep.message)}</li>`).join('')}</ul>${blocks}`;
         document.querySelector('main').prepend(banner);

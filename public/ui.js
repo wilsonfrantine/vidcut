@@ -262,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            modalSearchInput.value = searchInput.value;
             executeSearch(searchInput.value, searchList, searchStatus, (video) => {
                 VidCutApp.downloadFromYouTube(video.url);
             });
@@ -280,10 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function openModal() {
         if (!searchModal) return;
         searchModal.style.display = 'flex';
-        modalSearchInput.value = '';
-        modalSearchResults.innerHTML = '';
-        modalSearchStatus.style.display = 'none';
+        const p1Input = document.getElementById('searchInput');
+        if (p1Input && p1Input.value.trim() && !modalSearchInput.value.trim()) {
+            modalSearchInput.value = p1Input.value.trim();
+        }
         modalSearchInput.focus();
+        if (modalSearchInput.value.trim() && modalSearchResults.children.length === 0) {
+            executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, (video) => {
+                closeModal();
+                VidCutApp.downloadFromYouTube(video.url);
+            });
+        }
     }
 
     function closeModal() {
