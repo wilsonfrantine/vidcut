@@ -62,6 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (selected) tab.setAttribute('aria-current', 'page');
             else tab.removeAttribute('aria-current');
         });
+        if (viewId === 'step-2-editor' && window.VidCutApp && typeof VidCutApp.setCanvasAspectRatio === 'function') {
+            requestAnimationFrame(() => {
+                VidCutApp.setCanvasAspectRatio(VidCutApp.state.canvasAspectRatio || '16:9');
+                VidCutApp.renderTimelineRuler();
+                VidCutApp.renderClipsTimeline();
+            });
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -201,8 +208,72 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // Funções de busca de vídeos via yt-dlp
-    async function executeSearch(query, listEl, statusEl, onSelect) {
+    // Funções de busca de vídeos via yt-dlp com filtros, ordenação e botão "+" discreto
+    let activeMainFilter = 'all';
+    let activeModalFilter = 'all';
+    let activeMainSort = 'relevance';
+    let activeModalSort = 'relevance';
+
+    function setupFilterChips(containerId, onFilterChange) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const chips = container.querySelectorAll('.filter-chip');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                onFilterChange(chip.dataset.filter || 'all');
+            });
+        });
+    }
+
+    const searchSortSelect = document.getElementById('searchSortSelect');
+    if (searchSortSelect) {
+        searchSortSelect.addEventListener('change', () => {
+            activeMainSort = searchSortSelect.value;
+            if (searchInput && searchInput.value.trim()) {
+                executeSearch(searchInput.value, searchList, searchStatus, activeMainFilter, activeMainSort, (video) => {
+                    VidCutApp.downloadFromYouTube(video.url);
+                });
+            }
+        });
+    }
+
+    const modalSearchSortSelect = document.getElementById('modalSearchSortSelect');
+    if (modalSearchSortSelect) {
+        modalSearchSortSelect.addEventListener('change', () => {
+            activeModalSort = modalSearchSortSelect.value;
+            if (modalSearchInput && modalSearchInput.value.trim()) {
+                executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, activeModalFilter, activeModalSort, (video) => {
+                    const insertMode = document.querySelector('input[name="mediaInsertMode"]:checked')?.value || 'append';
+                    VidCutApp.downloadFromYouTube(video.url, insertMode);
+                    searchModal.style.display = 'none';
+                });
+            }
+        });
+    }
+
+    setupFilterChips('searchFilterChips', (filter) => {
+        activeMainFilter = filter;
+        if (searchInput && searchInput.value.trim()) {
+            executeSearch(searchInput.value, searchList, searchStatus, activeMainFilter, activeMainSort, (video) => {
+                VidCutApp.downloadFromYouTube(video.url);
+            });
+        }
+    });
+
+    setupFilterChips('modalSearchFilterChips', (filter) => {
+        activeModalFilter = filter;
+        if (modalSearchInput && modalSearchInput.value.trim()) {
+            executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, activeModalFilter, activeModalSort, (video) => {
+                const insertMode = document.querySelector('input[name="mediaInsertMode"]:checked')?.value || 'append';
+                VidCutApp.downloadFromYouTube(video.url, insertMode);
+                searchModal.style.display = 'none';
+            });
+        }
+    });
+
+    async function executeSearch(query, listEl, statusEl, filter = 'all', sort = 'relevance', onSelect) {
         if (!query.trim()) return;
         statusEl.style.display = 'block';
         statusEl.innerHTML = `<span>Pesquisando vídeos…</span><span class="loading-dots"></span>`;
@@ -210,12 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
         listEl.innerHTML = '';
 
         try {
-            const resp = await fetch(`/buscar-videos?q=${encodeURIComponent(query.trim())}&limit=8`);
+            const resp = await fetch(`/buscar-videos?q=${encodeURIComponent(query.trim())}&filter=${encodeURIComponent(filter)}&sort=${encodeURIComponent(sort)}&limit=12`);
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.message || 'Falha ao buscar vídeos.');
 
             if (!data.results || data.results.length === 0) {
-                statusEl.innerHTML = 'Nenhum vídeo encontrado para este termo.';
+                statusEl.innerHTML = 'Nenhum vídeo encontrado para este termo e filtro.';
                 statusEl.className = 'search-status';
                 return;
             }
@@ -230,18 +301,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 card.innerHTML = `
                     <div class="search-thumb-wrap">
-                        <img src="${video.thumbnail}" alt="" loading="lazy">
+                        <img class="search-thumb-img" src="${video.thumbnail}" alt="" loading="lazy">
                         <span class="search-duration-badge">${durationText}</span>
+                        <iframe class="search-preview-iframe" style="display:none;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        <button type="button" class="search-thumb-insert-btn" title="Inserir clipe no projeto (+)" aria-label="Inserir no projeto">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                        </button>
+                        <button type="button" class="search-preview-play-btn" title="Prévia do vídeo (reproduzir/pausar)">
+                            <span class="preview-play-icon">▶</span>
+                            <span class="preview-btn-label">Prévia</span>
+                        </button>
                     </div>
                     <div class="search-card-info">
                         <h4 class="search-card-title" title="${video.title}">${video.title}</h4>
                         <div class="search-card-meta">${video.channel}</div>
-                        <button class="nav-button primary search-import-btn" type="button">Importar para editar →</button>
+                        <div class="search-card-actions">
+                            <button type="button" class="search-thumb-insert-btn-text nav-button secondary" style="font-size:11px;padding:3px 8px;height:24px;" title="Inserir no projeto">
+                                + Inserir
+                            </button>
+                        </div>
                     </div>
                 `;
 
-                card.querySelector('.search-import-btn').addEventListener('click', () => {
-                    onSelect(video);
+                // Botão de Prévia (Inline no container da thumbnail com player controlável)
+                const playBtn = card.querySelector('.search-preview-play-btn');
+                const iframe = card.querySelector('.search-preview-iframe');
+                const thumbImg = card.querySelector('.search-thumb-img');
+                const durationBadge = card.querySelector('.search-duration-badge');
+
+                let isPreviewing = false;
+                playBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    isPreviewing = !isPreviewing;
+                    if (isPreviewing) {
+                        iframe.src = `https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1&controls=1&modestbranding=1&rel=0`;
+                        iframe.style.display = 'block';
+                        thumbImg.style.display = 'none';
+                        durationBadge.style.display = 'none';
+                        playBtn.innerHTML = '<span class="preview-play-icon">✕</span><span class="preview-btn-label">Fechar</span>';
+                        playBtn.classList.add('is-active');
+                    } else {
+                        iframe.src = '';
+                        iframe.style.display = 'none';
+                        thumbImg.style.display = 'block';
+                        durationBadge.style.display = 'block';
+                        playBtn.innerHTML = '<span class="preview-play-icon">▶</span><span class="preview-btn-label">Prévia</span>';
+                        playBtn.classList.remove('is-active');
+                    }
+                });
+
+                // Botões de Inserção no Projeto (botão circular "+" no canto superior direito da thumb e botão discreto)
+                const insertBtns = card.querySelectorAll('.search-thumb-insert-btn, .search-thumb-insert-btn-text');
+                insertBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (isPreviewing) {
+                            iframe.src = '';
+                        }
+                        onSelect(video);
+                    });
                 });
 
                 listEl.appendChild(card);
@@ -263,33 +381,65 @@ document.addEventListener('DOMContentLoaded', () => {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
             modalSearchInput.value = searchInput.value;
-            executeSearch(searchInput.value, searchList, searchStatus, (video) => {
+            executeSearch(searchInput.value, searchList, searchStatus, activeMainFilter, activeMainSort, (video) => {
                 VidCutApp.downloadFromYouTube(video.url);
             });
         });
     }
 
-    // Modal de Busca no Passo 2 (Editor)
+    // Modal de Adicionar Mídia no Editor (Upload Local ou Busca Web)
     const searchModal = document.getElementById('searchModal');
-    const editorSearchBtn = document.getElementById('editorSearchBtn');
+    const addMediaBtn = document.getElementById('addMediaBtn') || document.getElementById('editorSearchBtn');
     const closeSearchModal = document.getElementById('closeSearchModal');
     const modalSearchForm = document.getElementById('modalSearchForm');
     const modalSearchInput = document.getElementById('modalSearchInput');
     const modalSearchResults = document.getElementById('modalSearchResults');
     const modalSearchStatus = document.getElementById('modalSearchStatus');
+    const tabBtnModalSearch = document.getElementById('tabBtnModalSearch');
+    const tabBtnModalUpload = document.getElementById('tabBtnModalUpload');
+    const modalPanelSearch = document.getElementById('modal-panel-search');
+    const modalPanelUpload = document.getElementById('modal-panel-upload');
+    const modalVideoFileInput = document.getElementById('modalVideoFileInput');
+    const modalTriggerUploadBtn = document.getElementById('modalTriggerUploadBtn');
+
+    function switchModalTab(tabId) {
+        if (!modalPanelSearch || !modalPanelUpload) return;
+        if (tabId === 'modal-panel-upload') {
+            modalPanelSearch.style.display = 'none';
+            modalPanelUpload.style.display = 'flex';
+            if (tabBtnModalSearch) tabBtnModalSearch.classList.remove('active');
+            if (tabBtnModalUpload) tabBtnModalUpload.classList.add('active');
+        } else {
+            modalPanelSearch.style.display = 'flex';
+            modalPanelUpload.style.display = 'none';
+            if (tabBtnModalUpload) tabBtnModalUpload.classList.remove('active');
+            if (tabBtnModalSearch) tabBtnModalSearch.classList.add('active');
+            modalSearchInput.focus();
+        }
+    }
+
+    if (tabBtnModalSearch) tabBtnModalSearch.addEventListener('click', () => switchModalTab('modal-panel-search'));
+    if (tabBtnModalUpload) tabBtnModalUpload.addEventListener('click', () => switchModalTab('modal-panel-upload'));
+
+    function getMediaInsertMode() {
+        const checked = document.querySelector('input[name="mediaInsertMode"]:checked');
+        return checked ? checked.value : 'append';
+    }
 
     function openModal() {
         if (!searchModal) return;
         searchModal.style.display = 'flex';
+        switchModalTab('modal-panel-search');
         const p1Input = document.getElementById('searchInput');
         if (p1Input && p1Input.value.trim() && !modalSearchInput.value.trim()) {
             modalSearchInput.value = p1Input.value.trim();
         }
         modalSearchInput.focus();
         if (modalSearchInput.value.trim() && modalSearchResults.children.length === 0) {
-            executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, (video) => {
+            executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, activeModalFilter, activeModalSort, (video) => {
+                const mode = getMediaInsertMode();
                 closeModal();
-                VidCutApp.downloadFromYouTube(video.url);
+                VidCutApp.downloadFromYouTube(video.url, { insertMode: mode });
             });
         }
     }
@@ -299,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchModal.style.display = 'none';
     }
 
-    if (editorSearchBtn) editorSearchBtn.addEventListener('click', openModal);
+    if (addMediaBtn) addMediaBtn.addEventListener('click', openModal);
     if (closeSearchModal) closeSearchModal.addEventListener('click', closeModal);
     if (searchModal) {
         searchModal.addEventListener('click', (e) => {
@@ -310,10 +460,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalSearchForm) {
         modalSearchForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, (video) => {
+            executeSearch(modalSearchInput.value, modalSearchResults, modalSearchStatus, activeModalFilter, activeModalSort, (video) => {
+                const mode = getMediaInsertMode();
                 closeModal();
-                VidCutApp.downloadFromYouTube(video.url);
+                VidCutApp.downloadFromYouTube(video.url, { insertMode: mode });
             });
+        });
+    }
+
+    if (modalTriggerUploadBtn && modalVideoFileInput) {
+        modalTriggerUploadBtn.addEventListener('click', () => modalVideoFileInput.click());
+        modalVideoFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const mode = getMediaInsertMode();
+            closeModal();
+            VidCutApp.handleFileUpload({ target: { files: [file] } }, { insertMode: mode });
+            e.target.value = '';
         });
     }
 

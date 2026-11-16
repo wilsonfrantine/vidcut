@@ -2,6 +2,9 @@ node_modules/
 *.log
 .DS_Store
 .env
+cookies.txt
+*cookies.txt*
+*.Zone.Identifier
 
 
 videos/*

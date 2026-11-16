@@ -40,14 +40,14 @@
         const ytInput = document.getElementById('youtubeUrlInput');
         const ytBtn = document.getElementById('loadYoutubeVideo');
         const searchModeBtn = document.querySelector('.mode-selector-btn[data-mode="search"]');
-        const editorSearchBtn = document.getElementById('editorSearchBtn');
+        const editorSearchBtn = document.getElementById('addMediaBtn') || document.getElementById('editorSearchBtn');
         if (searchModeBtn) {
             searchModeBtn.disabled = isMissing;
             searchModeBtn.title = isMissing ? 'Indisponível: yt-dlp não instalado' : '';
         }
         if (editorSearchBtn) {
-            editorSearchBtn.disabled = isMissing;
-            editorSearchBtn.title = isMissing ? 'Busca indisponível: yt-dlp não instalado' : 'Buscar vídeo na web (S)';
+            const tabBtnModalSearch = document.getElementById('tabBtnModalSearch');
+            if (tabBtnModalSearch) tabBtnModalSearch.disabled = isMissing;
         }
         if (ytInput) ytInput.disabled = isMissing;
         if (ytBtn) ytBtn.disabled = isMissing;

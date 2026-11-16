@@ -22,7 +22,10 @@ function request(path, options = {}) {
 
 test.before(async () => {
     // Inicia o servidor para a bateria de testes
-    serverProcess = spawn('node', ['server.js'], { cwd: process.cwd() });
+    serverProcess = spawn(process.execPath, ['server.js'], { 
+        cwd: process.cwd(),
+        env: { ...process.env, PORT: String(PORT) }
+    });
     
     // Aguarda o servidor estar pronto
     for (let i = 0; i < 30; i++) {
@@ -83,6 +86,25 @@ test('Validação: /processar-video recusa requisições sem arquivo ou com par�
     assert.equal(res.status, 400);
     const data = JSON.parse(res.body);
     assert.match(data.message, /arquivo de vídeo válido/i);
+});
+
+test('Multipistas: /processar-video valida existência de arquivo para clips NLE', async () => {
+    const res = await request('/processar-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            videoPath: 'inexistente.mp4',
+            start: 0,
+            end: 5,
+            clips: [
+                { id: 'c1', filename: 'inexistente.mp4', start: 0, end: 2 },
+                { id: 'c2', filename: 'inexistente.mp4', start: 3, end: 5 }
+            ]
+        })
+    });
+    assert.equal(res.status, 404);
+    const data = JSON.parse(res.body);
+    assert.match(data.message, /arquivo não encontrado/i);
 });
 
 test('Sessão: /limpar-sessao esvazia pastas temporárias com sucesso', async () => {

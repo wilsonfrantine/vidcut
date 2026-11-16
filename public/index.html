@@ -80,6 +80,21 @@
                                 <input type="search" id="searchInput" placeholder="Ex: podcast tecnologia, lofi chill, trailer filme..." aria-label="Termo de pesquisa">
                                 <button id="searchSubmitBtn" class="nav-button primary" type="submit">Buscar</button>
                             </form>
+                            <div class="search-filter-chips" id="searchFilterChips">
+                                <button type="button" class="filter-chip active" data-filter="all">Todos</button>
+                                <button type="button" class="filter-chip" data-filter="shorts">Shorts (&lt; 60s)</button>
+                                <button type="button" class="filter-chip" data-filter="long">Vídeos Longos (&gt; 15 min)</button>
+                                <button type="button" class="filter-chip" data-filter="music">Músicas / Podcasts</button>
+                                <div class="search-sort-wrapper">
+                                    <label for="searchSortSelect" class="search-sort-label">Ordenar:</label>
+                                    <select id="searchSortSelect" class="search-sort-select">
+                                        <option value="relevance" selected>Relevância</option>
+                                        <option value="views">Mais Vistos</option>
+                                        <option value="duration_desc">Maior Duração</option>
+                                        <option value="duration_asc">Menor Duração</option>
+                                    </select>
+                                </div>
+                            </div>
 
                             <div id="searchResultsStatus" class="search-status" style="display:none;"></div>
                             <div id="searchResultsList" class="search-results-list"></div>
@@ -93,19 +108,54 @@
 
         <section id="step-2-editor" class="step app-view">
             <div class="step-content-wide">
-                <div class="editor-heading"><div><span class="eyebrow">EDIÇÃO</span><h2>Defina o trecho</h2><p>Ajuste a seleção na trilha de vídeo e escolha a saída.</p></div><a href="#step-1-upload" class="text-link change-source icon-button" title="Trocar vídeo" aria-label="Trocar vídeo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11l-3-3m3 3-3 3M17 17H6l3 3m-3-3 3-3"/></svg></a></div>
+                <div class="editor-heading">
+                    <div>
+                        <span class="eyebrow">EDIÇÃO</span>
+                        <h2>Defina o trecho</h2>
+                        <p>Ajuste a seleção na trilha de vídeo e escolha a saída.</p>
+                    </div>
+                    <div class="editor-header-actions">
+                        <div class="toolbar-actions editor-top-toolbar" id="editorTopToolbar">
+                            <div class="aspect-ratio-btn-wrapper">
+                                <button id="canvasAspectBtn" class="tracks-toggle icon-button" type="button" aria-label="Proporção da tela e Enquadramento" title="Proporção da tela e Enquadramento (Crop / Fit)">
+                                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+                                </button>
+                                <select id="canvasAspectSelect" class="canvas-aspect-select-overlay" title="Proporção da tela e Enquadramento" aria-label="Proporção da tela e Enquadramento">
+                                    <optgroup label="Cortar e Preencher (Cover / Sem bordas)">
+                                        <option value="16:9:cover" selected>16:9 • Cortar (YouTube / Wide)</option>
+                                        <option value="9:16:cover">9:16 • Cortar (Reels / TikTok / Shorts)</option>
+                                        <option value="1:1:cover">1:1 • Cortar (Quadrado / Feed)</option>
+                                        <option value="4:5:cover">4:5 • Cortar (Retrato / Instagram)</option>
+                                        <option value="3:4:cover">3:4 • Cortar (Feed Vertical)</option>
+                                    </optgroup>
+                                    <optgroup label="Ajustar com Bordas (Fit / Letterbox)">
+                                        <option value="16:9:contain">16:9 • Ajustar (Barras pretas)</option>
+                                        <option value="9:16:contain">9:16 • Ajustar (Barras pretas)</option>
+                                        <option value="1:1:contain">1:1 • Ajustar (Barras pretas)</option>
+                                        <option value="4:5:contain">4:5 • Ajustar (Barras pretas)</option>
+                                        <option value="3:4:contain">3:4 • Ajustar (Barras pretas)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <button id="addMediaBtn" class="tracks-toggle icon-button" type="button" aria-label="Adicionar mídia" title="Adicionar clipe ou mídia (Ctrl+K)"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+                            <button id="duplicateClipBtn" class="tracks-toggle icon-button" type="button" aria-label="Duplicar faixa selecionada" title="Duplicar faixa selecionada (só vídeo ou só áudio) (Ctrl+D)"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M5 16H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"/></svg></button>
+                            <button id="undoBtn" class="tracks-toggle icon-button" type="button" aria-label="Desfazer" title="Desfazer (Ctrl+Z)" disabled><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
+                            <button id="redoBtn" class="tracks-toggle icon-button" type="button" aria-label="Refazer" title="Refazer (Ctrl+Y)" disabled><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
+                            <button id="shortcutsToggle" class="tracks-toggle icon-button" type="button" aria-expanded="false" aria-controls="shortcutsPanel" aria-label="Atalhos de teclado" title="Atalhos de teclado (?)"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8"/></svg></button>
+                            <button id="toggleTracks" class="tracks-toggle icon-button" type="button" aria-expanded="true" aria-label="Ocultar trilhas" title="Ocultar trilhas"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4"/></svg></button>
+                        </div>
+                        <a href="#step-1-upload" class="text-link change-source icon-button" title="Trocar vídeo" aria-label="Trocar vídeo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11l-3-3m3 3-3 3M17 17H6l3 3m-3-3 3-3"/></svg></a>
+                    </div>
+                </div>
                 <div id="video-container" style="display:none;">
-                    <video id="videoPlayer" width="100%" controls></video>
+                    <canvas id="editorCanvas" width="1280" height="720"></canvas>
+                    <div id="canvasControlsOverlay" class="canvas-controls-overlay">
+                        <button id="canvasPlayBtn" class="canvas-play-btn" type="button" aria-label="Reproduzir / Pausar" title="Reproduzir (Espaço)"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="6,4 20,12 6,20"/></svg></button>
+                        <span id="canvasTimeDisplay" class="canvas-time-display">0:00.00 / 0:00.00</span>
+                    </div>
+                    <video id="videoPlayer" style="display:none;" preload="auto"></video>
                 </div>
                 <div id="controls" class="timeline-panel" style="display:none;">
-<div class="timeline-toolbar">
-                        <div class="timeline-title"><span class="eyebrow">LINHA DO TEMPO</span><strong>Seleção do corte</strong></div>
-                        <div class="toolbar-actions">
-                            <button id="editorSearchBtn" class="tracks-toggle icon-button" type="button" aria-label="Buscar e trocar vídeo" title="Buscar vídeo na web (S)"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
-                            <button id="shortcutsToggle" class="tracks-toggle icon-button" type="button" aria-expanded="false" aria-controls="shortcutsPanel" aria-label="Atalhos de teclado" title="Atalhos de teclado (?)"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8"/></svg></button>
-                            <button id="toggleTracks" class="tracks-toggle icon-button" type="button" aria-expanded="true" aria-label="Ocultar trilhas" title="Ocultar trilhas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4m8 2v4m-5 2v4"/></svg></button>
-                        </div>
-                    </div>
                     <div class="selection-bar">
                         <div class="range-controls">
                             <label class="range-input"><span>INÍCIO</span><div><input type="text" id="startTimeInput" inputmode="decimal" autocomplete="off" placeholder="0:00.00" aria-label="Início do trecho (mm:ss.cc ou segundos)"></div></label>
@@ -113,9 +163,10 @@
                             <span id="selectionDuration" class="selection-duration">0:00,00 selecionados</span>
                         </div>
                         <div class="mark-buttons">
-                                <button id="markStart" class="mark-button" type="button" title="Marcar início no ponto atual (I)"><svg class="btn-svg" viewBox="0 0 24 24"><path d="M4 6v12M20 12H8m4-4-4 4 4 4"/></svg> Marcar início</button>
-                                <button id="markEnd" class="mark-button" type="button" title="Marcar fim no ponto atual (O)">Marcar fim <svg class="btn-svg" viewBox="0 0 24 24"><path d="M20 6v12M4 12h12m-4-4 4 4-4 4"/></svg></button>
-                                <button id="loopToggle" class="mark-button active" type="button" aria-pressed="true" title="Repetir a seleção durante a reprodução (R)"><svg class="btn-svg" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15.5-6.36L2 9m0-6v6h6M3 12a9 9 0 0 0 15.5 6.36L22 15m0 6v-6h-6"/></svg> Repetir</button>
+                            <button id="markStart" class="mark-button" type="button" title="Marcar início no ponto atual (I)"><svg class="btn-svg" viewBox="0 0 24 24"><path d="M4 6v12M20 12H8m4-4-4 4 4 4"/></svg> Marcar início</button>
+                            <button id="markEnd" class="mark-button" type="button" title="Marcar fim no ponto atual (O)">Marcar fim <svg class="btn-svg" viewBox="0 0 24 24"><path d="M20 6v12M4 12h12m-4-4 4 4-4 4"/></svg></button>
+                            <button id="resetSelectionBtn" class="mark-button" type="button" title="Restaurar intervalo para a duração total do vídeo (Reset)"><svg class="btn-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Reset</button>
+                            <button id="loopToggle" class="mark-button active" type="button" aria-pressed="true" title="Repetir a seleção durante a reprodução (R)"><svg class="btn-svg" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15.5-6.36L2 9m0-6v6h6M3 12a9 9 0 0 0 15.5 6.36L22 15m0 6v-6h-6"/></svg> Repetir</button>
                         </div>
                     </div>
                     <div id="editorStatusArea" class="status-text editor-status-bar" role="status" aria-live="polite" style="display:none;"></div>
@@ -133,24 +184,32 @@
                             <div class="shortcuts-group">
                                 <h4>Edição</h4>
                                 <ul>
-                                    <li><span class="keys"><kbd>I</kbd></span><span>Marcar início</span></li>
-                                    <li><span class="keys"><kbd>O</kbd></span><span>Marcar fim</span></li>
+                                    <li><span class="keys"><kbd>S</kbd></span><span>Dividir clipe no cursor (Split)</span></li>
+                                    <li><span class="keys"><kbd>Ctrl</kbd>+<kbd>D</kbd></span><span>Duplicar clipe selecionado</span></li>
+                                    <li><span class="keys"><kbd>Del</kbd><kbd>⌫</kbd></span><span>Excluir clipe selecionado</span></li>
+                                    <li><span class="keys"><kbd>Ctrl</kbd>+<kbd>Z</kbd></span><span>Desfazer alteração</span></li>
+                                    <li><span class="keys"><kbd>Ctrl</kbd>+<kbd>Y</kbd></span><span>Refazer alteração</span></li>
+                                    <li><span class="keys"><kbd>Ctrl</kbd>+<kbd>K</kbd></span><span>Adicionar mídia / Buscar</span></li>
+                                    <li><span class="keys"><kbd>I</kbd></span><span>Marcar início da seleção</span></li>
+                                    <li><span class="keys"><kbd>O</kbd></span><span>Marcar fim da seleção</span></li>
                                     <li><span class="keys"><kbd>R</kbd></span><span>Repetir seleção</span></li>
-                                    <li><span class="keys"><kbd>S</kbd></span><span>Buscar vídeo na web</span></li>
                                     <li><span class="keys"><kbd>?</kbd></span><span>Mostrar / ocultar atalhos</span></li>
                                 </ul>
                             </div>
                         </div>
                     </section>
+                    <!-- Container Dinâmico de Pistas Multipista NLE -->
+                    <div id="timeline-slider" style="display:none;"></div>
+                    <div class="timeline-ruler-wrapper">
+                        <div class="ruler-corner"><span>TEMPO</span></div>
+                        <div id="timelineRuler" class="timeline-ruler">
+                            <canvas id="rulerCanvas" height="26"></canvas>
+                            <div id="rulerSelectionHighlight" class="timeline-ruler-selection-highlight"></div>
+                            <div id="rulerPlayhead" class="timeline-playhead"></div>
+                        </div>
+                    </div>
                     <div id="timelineTracks" class="timeline-tracks">
-                        <div class="track-row video-track">
-                            <div class="track-label"><span class="track-icon video-icon">▣</span><span><strong>Vídeo</strong><small id="videoTrackInfo">Faixa visual</small></span></div>
-                            <div class="track-lane video-lane"><div id="videoTrackPreviews" class="video-track-previews" aria-hidden="true"></div><div id="videoSelectionOverlay" class="video-selection-overlay"></div><div id="videoPlayhead" class="timeline-playhead" aria-hidden="true"></div><div id="timeline-slider"></div></div>
-                        </div>
-                        <div class="track-row audio-track" id="audioTrackRow">
-                            <div class="track-label audio-track-label"><span class="track-icon audio-icon">♫</span><span class="audio-track-copy"><strong>Áudio</strong><small id="audioTrackInfo">Incluído na renderização</small></span><div class="audio-track-actions"><button id="audioMuteToggle" class="track-action icon-button" type="button" aria-label="Silenciar trilha de áudio" title="Silenciar áudio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4zM15 9a5 5 0 0 1 0 6m3-9a9 9 0 0 1 0 12"/></svg><span class="mute-slash" aria-hidden="true">／</span></button><button id="audioRemoveToggle" class="track-action remove-action icon-button" type="button" aria-label="Remover trilha de áudio" title="Remover faixa do vídeo">×</button></div></div>
-                            <div class="track-lane audio-lane"><img id="audioWaveform" alt="" aria-hidden="true"><div id="audioSelectionOverlay" class="audio-selection-overlay"></div><div id="audioPlayhead" class="timeline-playhead" aria-hidden="true"></div></div>
-                        </div>
+                        <!-- Gerado dinamicamente via VidCutApp.renderTracksUI() -->
                     </div>
                 </div>
                  <div class="navigation-links">
@@ -271,24 +330,95 @@
         </div>
     </div>
 
-    <!-- Modal Spotlight de Busca de Vídeo dentro do Editor -->
+    <!-- Menu de Contexto do Editor (Desktop e Mobile) -->
+    <div id="timelineContextMenu" class="timeline-context-menu" style="display:none;" role="menu">
+        <button type="button" class="ctx-item" data-action="split"><span class="ctx-icon">✂</span> Dividir no cursor (S)</button>
+        <button type="button" class="ctx-item" data-action="duplicate"><span class="ctx-icon">📑</span> Duplicar faixa (Ctrl+D)</button>
+        <button type="button" class="ctx-item" data-action="copy"><span class="ctx-icon">📋</span> Copiar (Ctrl+C)</button>
+        <button type="button" class="ctx-item" data-action="paste"><span class="ctx-icon">📥</span> Colar no cursor (Ctrl+V)</button>
+        <div class="ctx-divider"></div>
+        <button type="button" class="ctx-item" data-action="fade-in"><span class="ctx-icon">◢</span> Alternar Fade In</button>
+        <button type="button" class="ctx-item" data-action="fade-out"><span class="ctx-icon">◣</span> Alternar Fade Out</button>
+        <div class="ctx-divider"></div>
+        <button type="button" class="ctx-item text-danger" data-action="delete"><span class="ctx-icon">🗑</span> Excluir (Del)</button>
+    </div>
+
+    <!-- Menu de Contexto da Faixa / Cabeçalho -->
+    <div id="trackContextMenu" class="timeline-context-menu" style="display:none;" role="menu">
+        <button type="button" class="ctx-item" data-action="duplicate-track"><span class="ctx-icon">📑</span> Duplicar faixa</button>
+        <button type="button" class="ctx-item" data-action="copy-track"><span class="ctx-icon">📋</span> Copiar clipes da faixa</button>
+        <div class="ctx-divider"></div>
+        <button type="button" class="ctx-item text-danger" data-action="delete-track"><span class="ctx-icon">🗑</span> Remover faixa</button>
+    </div>
+
+    <!-- Modal de Adicionar Mídia (Upload Local ou Busca Web) -->
     <div id="searchModal" class="search-modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
         <div class="search-modal-card">
             <div class="search-modal-header">
                 <div>
-                    <h3 id="searchModalTitle">Buscar vídeo na web</h3>
-                    <p>Pesquise e carregue um novo vídeo diretamente no editor</p>
+                    <h3 id="searchModalTitle">Adicionar Mídia ao Editor</h3>
+                    <p>Envie um arquivo local ou pesquise vídeos na web para sua timeline</p>
                 </div>
-                <button id="closeSearchModal" class="icon-button close-modal-btn" type="button" aria-label="Fechar busca">✕</button>
+                <button id="closeSearchModal" class="icon-button close-modal-btn" type="button" aria-label="Fechar janela">✕</button>
             </div>
 
-            <form id="modalSearchForm" class="search-input-row" onsubmit="return false;">
-                <input type="search" id="modalSearchInput" placeholder="Ex: gameplay, tutorial python, música..." aria-label="Buscar vídeo">
-                <button id="modalSearchSubmitBtn" class="nav-button primary" type="submit">Buscar</button>
-            </form>
+            <!-- Destino da mídia adicionada -->
+            <div class="modal-destination-selector">
+                <span class="destination-label">Ação na timeline:</span>
+                <div class="destination-options">
+                    <label class="dest-radio-label">
+                        <input type="radio" name="mediaInsertMode" value="append" checked>
+                        <span>Adicionar como nova faixa / clipe</span>
+                    </label>
+                    <label class="dest-radio-label">
+                        <input type="radio" name="mediaInsertMode" value="replace">
+                        <span>Substituir clipe principal</span>
+                    </label>
+                </div>
+            </div>
 
-            <div id="modalSearchStatus" class="search-status" style="display:none;"></div>
-            <div id="modalSearchResults" class="search-results-list modal-results"></div>
+            <!-- Abas do Modal: Upload Local vs Busca na Web -->
+            <div class="modal-tabs-header">
+                <button type="button" id="tabBtnModalSearch" class="modal-tab-btn active" data-tab="modal-panel-search">Buscar na Web</button>
+                <button type="button" id="tabBtnModalUpload" class="modal-tab-btn" data-tab="modal-panel-upload">Upload de Arquivo</button>
+            </div>
+
+            <div class="modal-tab-content-container">
+                <!-- Aba 1: Busca Web -->
+                <div id="modal-panel-search" class="modal-tab-panel active">
+                    <form id="modalSearchForm" class="search-input-row" onsubmit="return false;">
+                        <input type="search" id="modalSearchInput" placeholder="Ex: gameplay, tutorial python, música..." aria-label="Buscar vídeo">
+                        <button id="modalSearchSubmitBtn" class="nav-button primary" type="submit">Buscar</button>
+                    </form>
+                    <div class="search-filter-chips" id="modalSearchFilterChips">
+                        <button type="button" class="filter-chip active" data-filter="all">Todos</button>
+                        <button type="button" class="filter-chip" data-filter="shorts">Shorts (&lt; 60s)</button>
+                        <button type="button" class="filter-chip" data-filter="long">Vídeos Longos (&gt; 15 min)</button>
+                        <button type="button" class="filter-chip" data-filter="music">Músicas / Podcasts</button>
+                        <div class="search-sort-wrapper">
+                            <label for="modalSearchSortSelect" class="search-sort-label">Ordenar:</label>
+                            <select id="modalSearchSortSelect" class="search-sort-select">
+                                <option value="relevance" selected>Relevância</option>
+                                <option value="views">Mais Vistos</option>
+                                <option value="duration_desc">Maior Duração</option>
+                                <option value="duration_asc">Menor Duração</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="modalSearchStatus" class="search-status" style="display:none;"></div>
+                    <div id="modalSearchResults" class="search-results-list modal-results"></div>
+                </div>
+
+                <!-- Aba 2: Upload Local -->
+                <div id="modal-panel-upload" class="modal-tab-panel" style="display:none;">
+                    <div class="modal-upload-box">
+                        <input type="file" id="modalVideoFileInput" accept="video/*,audio/*,.mkv,.avi,.mov,.mp4,.webm,.mp3,.wav,.ogg" style="display:none;">
+                        <button type="button" id="modalTriggerUploadBtn" class="nav-button primary">Escolher arquivo de vídeo ou áudio</button>
+                        <p class="modal-upload-hint">Formatos suportados: MP4, WebM, MKV, MOV, MP3, WAV</p>
+                        <div id="modalUploadStatus" class="search-status" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
