@@ -465,7 +465,15 @@ app.post('/processar-video', (req, res) => {
             filterSegments.push(`${aOutputs.join('')}concat=n=${validClips.length}:v=0:a=1[outa]`);
             ffmpegArgs.push('-filter_complex', filterSegments.join(';'), '-map', '[outa]', '-c:a', 'libmp3lame', '-q:a', '2');
         } else {
-            filterSegments.push(`${vOutputs.join('')}${aOutputs.join('')}concat=n=${validClips.length}:v=1:a=1[rawv][outa]`);
+            // Em modo multipista com transições, cortes ou proporções personalizadas, reencodificamos com H.264
+            // para garantir precisão de corte em qualquer frame (evitando congelamentos de GOP do -c copy)
+            const includeAudioStream = preserveAudio && !muteAudio;
+            if (includeAudioStream) {
+                filterSegments.push(`${vOutputs.join('')}concat=n=${validClips.length}:v=1:a=0[rawv]`);
+                filterSegments.push(`${aOutputs.join('')}concat=n=${validClips.length}:v=0:a=1[outa]`);
+            } else {
+                filterSegments.push(`${vOutputs.join('')}concat=n=${validClips.length}:v=1:a=0[rawv]`);
+            }
             
             // Aplica filtro de proporção ('cover' = corta e preenche; 'contain' = letterbox) se especificado
             let finalVMap = '[rawv]';
@@ -487,12 +495,8 @@ app.post('/processar-video', (req, res) => {
             }
 
             ffmpegArgs.push('-filter_complex', filterSegments.join(';'), '-map', finalVMap);
-            if (preserveAudio) {
-                if (muteAudio) {
-                    ffmpegArgs.push('-an');
-                } else {
-                    ffmpegArgs.push('-map', '[outa]', '-c:a', 'aac', '-b:a', '192k');
-                }
+            if (includeAudioStream) {
+                ffmpegArgs.push('-map', '[outa]', '-c:a', 'aac', '-b:a', '192k');
             } else {
                 ffmpegArgs.push('-an');
             }

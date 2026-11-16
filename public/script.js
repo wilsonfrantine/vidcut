@@ -457,6 +457,11 @@ const VidCutApp = {
         }
 
         const initialDuration = Number(result.mediaInfo?.duration) || 0;
+        if (initialDuration > 0) {
+            this.state.videoDuration = initialDuration;
+            this.state.start = 0;
+            this.state.end = initialDuration;
+        }
         const rootVClip = {
             id: 'clip_root_v_' + Date.now(),
             trackId: 'v1',
@@ -522,13 +527,20 @@ const VidCutApp = {
     },
 
     setupTimelineSlider() {
-        this.state.videoDuration = this.DOM.videoPlayer.duration;
+        // Usa a duração do elemento HTMLVideoElement ou mantém a duração já detectada com precisão pelo ffprobe
+        const playerDur = this.DOM.videoPlayer.duration;
+        if (Number.isFinite(playerDur) && playerDur > 0) {
+            this.state.videoDuration = playerDur;
+        }
         if (!Number.isFinite(this.state.videoDuration) || this.state.videoDuration <= 0) {
             this.setLoadingState(false, 'Este vídeo não pôde ser aberto ou não tem duração válida.', 'red');
             return;
         }
-        this.state.start = 0;
-        this.state.end = this.state.videoDuration;
+        // Se start/end não tiverem sido inicializados ou se end exceder a duração real, sincroniza
+        if (!Number.isFinite(this.state.start) || this.state.start < 0) this.state.start = 0;
+        if (!Number.isFinite(this.state.end) || this.state.end <= 0 || this.state.end > this.state.videoDuration + 0.05) {
+            this.state.end = this.state.videoDuration;
+        }
 
         if (this.DOM.timelineSlider && typeof noUiSlider !== 'undefined') {
             if (this.DOM.timelineSlider.noUiSlider) {
@@ -2729,10 +2741,16 @@ const VidCutApp = {
     },
 
     updateExportDescription() {
+        const hasNleClips = (this.state.clips && this.state.clips.length > 1) ||
+            (this.state.clips && this.state.clips.some(c => c.transitionIn || c.transitionOut)) ||
+            (this.state.canvasAspectRatio && this.state.canvasAspectRatio !== 'original');
+
         const description = this.state.outputMode === 'audio'
             ? 'Somente a faixa de áudio selecionada será exportada em MP3.'
             : this.state.outputMode === 'original'
-                ? 'O trecho selecionado será extraído instantaneamente no formato original sem perda de qualidade (-c copy).'
+                ? (hasNleClips 
+                    ? 'Edições multipistas, transições ou proporções requerem renderização precisa frame a frame (H.264 + AAC).'
+                    : 'O trecho selecionado será extraído instantaneamente no formato original sem perda de qualidade (-c copy).')
                 : 'O vídeo será recodificado em formato MP4 padrão (H.264 + AAC) para compatibilidade universal.';
         document.getElementById('resultDescription').innerText = description;
     },
@@ -2820,7 +2838,7 @@ const VidCutApp = {
         if (!Number.isFinite(this.state.end) || this.state.end <= 0) {
             return 'Ponto de término inválido: informe um tempo maior que zero.';
         }
-        if (this.state.end > this.state.videoDuration + 0.05) {
+        if (this.state.end > this.state.videoDuration + 0.5) {
             return `O fim selecionado (${this.formatTime(this.state.end)}) ultrapassa a duração total do vídeo (${this.formatTime(this.state.videoDuration)}).`;
         }
         if (this.state.start >= this.state.end) {
