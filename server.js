@@ -50,13 +50,18 @@ function toolFailure(error, stderr, toolName) {
 }
 
 // Retorna argumentos adicionais para o yt-dlp (cookies se existirem, JS runtime node e remote-components ejs)
-function getYtDlpExtraArgs() {
+function getYtDlpExtraArgs(customArgs = {}) {
     const nodePath = process.execPath || '/home/linuxbrew/.linuxbrew/bin/node';
     const extra = [
         '--js-runtimes', `node:${nodePath}`,
         '--remote-components', 'ejs:github'
     ];
     
+    // Suporte a cliente específico caso solicitado (ex: fallback android/mweb)
+    if (customArgs.client) {
+        extra.push('--extractor-args', `youtube:player_client=${customArgs.client}`);
+    }
+
     // Procura por cookies.txt na pasta do projeto ou caminho configurado por COOKIES_PATH
     const cookiesEnv = process.env.COOKIES_PATH;
     const localCookies = path.join(__dirname, 'cookies.txt');
@@ -276,30 +281,58 @@ app.post('/download-from-youtube', (req, res) => {
     }
     const baseFilename = `yt_${Date.now()}-${Math.round(Math.random() * 1E9)}`;
     const outputPathTemplate = path.join(UPLOAD_DIR, `${baseFilename}.%(ext)s`);
-    const downloadArgs = [...getYtDlpExtraArgs(), '-f', 'bv*+ba/b', '-o', outputPathTemplate, youtubeUrl];
 
     const IS_RUNNING_IN_WSL = !USE_WSL;
-    let command;
-    let args;
+    const wslOutputPath = `/mnt/${outputPathTemplate.substring(0, 1).toLowerCase()}${outputPathTemplate.substring(2).replace(/\\/g, '/')}`;
 
-    if (IS_RUNNING_IN_WSL) {
-        command = bin.ytdlp;
-        args = downloadArgs;
-    } else {
-        const wslOutputPath = `/mnt/${outputPathTemplate.substring(0, 1).toLowerCase()}${outputPathTemplate.substring(2).replace(/\\/g, '/')}`;
-        command = 'wsl';
-        args = [bin.ytdlp, ...downloadArgs.map(arg => arg === outputPathTemplate ? wslOutputPath : arg)];
-    }
+    const executeDownload = (extraArgsOptions = {}, onComplete) => {
+        const downloadArgs = [...getYtDlpExtraArgs(extraArgsOptions), '-f', 'bv*+ba/b', '-o', outputPathTemplate, youtubeUrl];
+        let command;
+        let args;
 
-    console.log('Executando comando de download:', command);
+        if (IS_RUNNING_IN_WSL) {
+            command = bin.ytdlp;
+            args = downloadArgs;
+        } else {
+            command = 'wsl';
+            args = [bin.ytdlp, ...downloadArgs.map(arg => arg === outputPathTemplate ? wslOutputPath : arg)];
+        }
 
-    execFile(command, args, (error, stdout, stderr) => {
+        console.log('Executando comando de download:', command);
+        execFile(command, args, (error, stdout, stderr) => {
+            onComplete(error, stdout, stderr);
+        });
+    };
+
+    // Tentativa inicial padrão (Web/VisionOS/Samsung com solver JS e cookies se disponíveis)
+    executeDownload({}, (error, stdout, stderr) => {
+        const isBotChallenge = error && (/Sign in to confirm you’re not a bot|confirm you.?re not a bot/i.test(stderr || '') || /Requested format is not available/i.test(stderr || ''));
+
+        // Se falhou por desafio de bot ou formato bloqueado, tenta fallback para cliente móvel (mweb, android)
+        if (isBotChallenge) {
+            console.warn('Tentativa primária bloqueada por desafio de bot. Executando fallback com cliente móvel (mweb,android)...');
+            return executeDownload({ client: 'mweb,android,web' }, (fallbackError, fallbackStdout, fallbackStderr) => {
+                if (fallbackError) {
+                    console.error(`Erro ao baixar com yt-dlp (fallback): ${fallbackError.message}`);
+                    return res.status(500).json({
+                        message: 'Falha ao baixar vídeo deste link. O YouTube exigiu autenticação.',
+                        ...toolFailure(fallbackError, fallbackStderr, 'yt-dlp')
+                    });
+                }
+                handleDownloadSuccess();
+            });
+        }
+
         if (error) {
             console.error(`Erro ao baixar com yt-dlp: ${error.message}`);
             return res.status(500).json({ message: 'Falha ao baixar vídeo deste link. Verifique se a URL é compatível e acessível.', ...toolFailure(error, stderr, 'yt-dlp') });
         }
 
-        // 3. Descobre o nome COMPLETO do arquivo que foi criado
+        handleDownloadSuccess();
+    });
+
+    function handleDownloadSuccess() {
+        // Descobre o nome COMPLETO do arquivo que foi criado
         const files = fs.readdirSync(UPLOAD_DIR);
         const finalFilename = files.find(f => f.startsWith(baseFilename));
 
@@ -315,7 +348,7 @@ app.post('/download-from-youtube', (req, res) => {
                 res.status(200).json({ message: 'Download concluído!', filename: finalFilename, mediaInfo: enrichedMediaInfo });
             });
         });
-    });
+    }
 });
 
 app.post('/processar-video', (req, res) => {
