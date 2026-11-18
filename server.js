@@ -408,9 +408,24 @@ app.post('/processar-video', (req, res) => {
 
     let ffmpegArgs = [];
 
-    if (hasNleClips && (clips.length > 1 || clips.some(c => c.transitionIn || c.transitionOut))) {
+    // Normaliza objetos de clipe aceitando tanto start/end quanto trimStart/trimEnd
+    const normalizedClips = hasNleClips ? clips.map(c => {
+        const cStart = Number.isFinite(c.start) ? c.start : (Number.isFinite(c.trimStart) ? c.trimStart : 0);
+        const cEnd = Number.isFinite(c.end) ? c.end : (Number.isFinite(c.trimEnd) ? c.trimEnd : (c.duration || 0));
+        return {
+            ...c,
+            start: cStart,
+            end: cEnd
+        };
+    }).filter(c => Number.isFinite(c.start) && Number.isFinite(c.end) && c.end > c.start) : [];
+
+    const shouldUseNle = normalizedClips.length > 1 || 
+        normalizedClips.some(c => c.transitionIn || c.transitionOut) ||
+        (normalizedClips.length === 1 && (normalizedClips[0].filename && normalizedClips[0].filename !== videoPath));
+
+    if (shouldUseNle) {
         // Renderização Multipistas / NLE via -filter_complex
-        const validClips = clips.filter(c => Number.isFinite(c.start) && Number.isFinite(c.end) && c.end > c.start);
+        const validClips = normalizedClips;
         
         // Mapeia inputs únicos para os arquivos necessários
         const inputFiles = [];
@@ -436,29 +451,37 @@ app.post('/processar-video', (req, res) => {
         validClips.forEach((c, idx) => {
             const inIdx = fileToIndex.get(c.filename || videoPath);
             const clipDur = c.end - c.start;
-            let vFilter = `[${inIdx}:v]trim=start=${c.start.toFixed(3)}:end=${c.end.toFixed(3)},setpts=PTS-STARTPTS`;
-            let aFilter = `[${inIdx}:a]atrim=start=${c.start.toFixed(3)}:end=${c.end.toFixed(3)},asetpts=PTS-STARTPTS`;
+            const aTag = `a${idx}`;
 
-            // Transição de Fade In
+            let aFilter = `[${inIdx}:a]atrim=start=${c.start.toFixed(3)}:end=${c.end.toFixed(3)},asetpts=PTS-STARTPTS`;
             if (c.transitionIn && c.transitionIn.type === 'fade') {
                 const transDur = Math.min(c.transitionIn.duration || 0.5, clipDur / 2);
-                vFilter += `,fade=t=in:st=0:d=${transDur.toFixed(2)}`;
                 aFilter += `,afade=t=in:st=0:d=${transDur.toFixed(2)}`;
             }
-            // Transição de Fade Out
             if (c.transitionOut && c.transitionOut.type === 'fade') {
                 const transDur = Math.min(c.transitionOut.duration || 0.5, clipDur / 2);
                 const fadeStart = Math.max(0, clipDur - transDur);
-                vFilter += `,fade=t=out:st=${fadeStart.toFixed(2)}:d=${transDur.toFixed(2)}`;
                 aFilter += `,afade=t=out:st=${fadeStart.toFixed(2)}:d=${transDur.toFixed(2)}`;
             }
-
-            const vTag = `v${idx}`;
-            const aTag = `a${idx}`;
-            filterSegments.push(`${vFilter}[${vTag}]`);
             filterSegments.push(`${aFilter}[${aTag}]`);
-            vOutputs.push(`[${vTag}]`);
             aOutputs.push(`[${aTag}]`);
+
+            // Constrói filtro de vídeo apenas se não for exportação somente áudio
+            if (outputMode !== 'audio') {
+                const vTag = `v${idx}`;
+                let vFilter = `[${inIdx}:v]trim=start=${c.start.toFixed(3)}:end=${c.end.toFixed(3)},setpts=PTS-STARTPTS`;
+                if (c.transitionIn && c.transitionIn.type === 'fade') {
+                    const transDur = Math.min(c.transitionIn.duration || 0.5, clipDur / 2);
+                    vFilter += `,fade=t=in:st=0:d=${transDur.toFixed(2)}`;
+                }
+                if (c.transitionOut && c.transitionOut.type === 'fade') {
+                    const transDur = Math.min(c.transitionOut.duration || 0.5, clipDur / 2);
+                    const fadeStart = Math.max(0, clipDur - transDur);
+                    vFilter += `,fade=t=out:st=${fadeStart.toFixed(2)}:d=${transDur.toFixed(2)}`;
+                }
+                filterSegments.push(`${vFilter}[${vTag}]`);
+                vOutputs.push(`[${vTag}]`);
+            }
         });
 
         if (outputMode === 'audio') {

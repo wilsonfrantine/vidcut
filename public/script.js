@@ -317,8 +317,18 @@ const VidCutApp = {
         this.DOM.downloadArea.style.display = 'none';
 
         try {
-            const hasMultipleClipsOrTransitions = (this.state.clips && this.state.clips.length > 1) ||
-                (this.state.clips && this.state.clips.some(c => c.transitionIn || c.transitionOut));
+            // Prepara os clipes com início/fim normalizados
+            const formattedClips = (this.state.clips || [])
+                .filter(c => c && c.type === 'video')
+                .map(c => ({
+                    ...c,
+                    start: Number.isFinite(c.trimStart) ? c.trimStart : 0,
+                    end: Number.isFinite(c.trimEnd) ? c.trimEnd : (c.duration || 0)
+                }))
+                .filter(c => c.end > c.start);
+
+            const hasMultipleClipsOrTransitions = formattedClips.length > 1 ||
+                formattedClips.some(c => c.transitionIn || c.transitionOut);
 
             const response = await fetch('/processar-video', {
                 method: 'POST',
@@ -333,7 +343,7 @@ const VidCutApp = {
                     customName: this.state.customName,
                     aspectRatio: this.state.canvasAspectRatio || '16:9',
                     fitMode: this.state.canvasFitMode || 'cover',
-                    clips: hasMultipleClipsOrTransitions ? this.state.clips : undefined
+                    clips: hasMultipleClipsOrTransitions ? formattedClips : undefined
                 })
             });
             const result = await response.json();
@@ -1824,8 +1834,17 @@ const VidCutApp = {
 
         if (maxEnd > 0) {
             this.state.videoDuration = maxEnd;
-            if (this.state.end < maxEnd) {
+            if (this.state.end > maxEnd || this.state.end <= 0) {
                 this.state.end = maxEnd;
+            }
+            if (this.state.start >= this.state.end) {
+                this.state.start = 0;
+            }
+            if (this.DOM.timelineSlider?.noUiSlider) {
+                this.DOM.timelineSlider.noUiSlider.updateOptions({
+                    range: { 'min': 0, 'max': this.state.videoDuration }
+                });
+                this.DOM.timelineSlider.noUiSlider.set([this.state.start, this.state.end]);
             }
             this.updateTimelineUI();
             this.updatePlayhead();
@@ -1936,6 +1955,7 @@ const VidCutApp = {
             }
         }
 
+        this.recalculateProjectDuration();
         this.renderClipsTimeline();
         this.renderCanvasFrame();
         this.showEditorNotification(`Clipe dividido em ${this.formatTime(currentTime)}`);
