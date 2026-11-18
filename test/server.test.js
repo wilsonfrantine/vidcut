@@ -1,10 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
+const path = require('node:path');
+const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 
 let serverProcess;
-const PORT = 3000;
+const PORT = 3099;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 function request(path, options = {}) {
@@ -24,7 +26,8 @@ test.before(async () => {
     // Inicia o servidor para a bateria de testes
     serverProcess = spawn(process.execPath, ['server.js'], { 
         cwd: process.cwd(),
-        env: { ...process.env, PORT: String(PORT) }
+        env: { ...process.env, PORT: String(PORT) },
+        stdio: 'inherit'
     });
     
     // Aguarda o servidor estar pronto
@@ -105,6 +108,62 @@ test('Multipistas: /processar-video valida existência de arquivo para clips NLE
     assert.equal(res.status, 404);
     const data = JSON.parse(res.body);
     assert.match(data.message, /arquivo não encontrado/i);
+});
+
+test('Exportação: WebM com efeitos/transição é exportado com sucesso em MP4 (H.264/AAC)', async () => {
+    // Cria um vídeo de teste .webm sintético
+    const testWebmName = 'test_fixture.webm';
+    const testWebmPath = path.join(__dirname, '..', 'videos', testWebmName);
+    const { execSync } = require('child_process');
+    execSync(`ffmpeg -y -f lavfi -i testsrc=duration=2:size=160x120:rate=15 -f lavfi -i sine=frequency=800:duration=2 -c:v libvpx-vp9 -c:a libopus "${testWebmPath}"`);
+
+    try {
+        const res = await request('/processar-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                videoPath: testWebmName,
+                start: 0.2,
+                end: 1.5,
+                outputMode: 'original',
+                clips: [
+                    { id: 'c1', filename: testWebmName, start: 0.2, end: 1.5, transitionIn: { type: 'fade', duration: 0.3 } }
+                ]
+            })
+        });
+        assert.equal(res.status, 200);
+        const data = JSON.parse(res.body);
+        assert.ok(data.outputFile);
+        assert.match(data.outputFile, /\.mp4$/i);
+    } finally {
+        if (fs.existsSync(testWebmPath)) fs.unlinkSync(testWebmPath);
+    }
+});
+
+test('Exportação: WebM em corte puro sem conversão preserva .webm (-c copy)', async () => {
+    const testWebmName = 'test_fixture_copy.webm';
+    const testWebmPath = path.join(__dirname, '..', 'videos', testWebmName);
+    const { execSync } = require('child_process');
+    execSync(`ffmpeg -y -f lavfi -i testsrc=duration=2:size=160x120:rate=15 -f lavfi -i sine=frequency=800:duration=2 -c:v libvpx-vp9 -c:a libopus "${testWebmPath}"`);
+
+    try {
+        const res = await request('/processar-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                videoPath: testWebmName,
+                start: 0.2,
+                end: 1.5,
+                outputMode: 'original'
+            })
+        });
+        assert.equal(res.status, 200);
+        const data = JSON.parse(res.body);
+        assert.ok(data.outputFile);
+        assert.match(data.outputFile, /\.webm$/i);
+    } finally {
+        if (fs.existsSync(testWebmPath)) fs.unlinkSync(testWebmPath);
+    }
 });
 
 test('Sessão: /limpar-sessao esvazia pastas temporárias com sucesso', async () => {

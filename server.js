@@ -377,21 +377,6 @@ app.post('/processar-video', (req, res) => {
         return res.status(400).json({ message: 'Selecione uma faixa de áudio para exportar somente o áudio.' });
     }
     const inputFilePath = path.join(UPLOAD_DIR, videoPath);
-    // Sanitiza nome personalizado (se fornecido) ou gera nome baseado no vídeo e intervalo
-    let safeBaseName = '';
-    if (typeof customName === 'string' && customName.trim()) {
-        safeBaseName = customName.trim()
-            .replace(/[\\/:*?"<>|\x00-\x1F]/g, '_')
-            .replace(/\.[^.]+$/, '')
-            .substring(0, 100);
-    }
-    const origExt = (path.extname(videoPath).slice(1) || 'mp4').toLowerCase();
-    const ext = outputMode === 'audio' ? 'mp3' : (outputMode === 'original' ? origExt : 'mp4');
-    const outputFilename = safeBaseName 
-        ? `${safeBaseName}.${ext}` 
-        : `corte_${path.parse(videoPath).name}_${Math.round(start * 1000)}-${Math.round(end * 1000)}.${ext}`;
-    const outputFilePath = path.join(OUTPUT_DIR, outputFilename);
-
     if (!fs.existsSync(inputFilePath)) {
         return res.status(404).json({ message: `Arquivo não encontrado no servidor: ${videoPath}` });
     }
@@ -400,13 +385,9 @@ app.post('/processar-video', (req, res) => {
     const IS_RUNNING_IN_WSL = !USE_WSL;
     const preserveAudio = includeAudio !== false;
     const toWsl = p => `/mnt/${p.substring(0, 1).toLowerCase()}${p.substring(2).replace(/\\/g, '/')}`;
-    const inputPath = IS_RUNNING_IN_WSL ? inputFilePath : toWsl(inputFilePath);
-    const outputPath = IS_RUNNING_IN_WSL ? outputFilePath : toWsl(outputFilePath);
 
     // Se houver múltiplos clipes ou transições definidos no editor
     const hasNleClips = Array.isArray(clips) && clips.length > 0;
-
-    let ffmpegArgs = [];
 
     // Normaliza objetos de clipe aceitando tanto start/end quanto trimStart/trimEnd
     const normalizedClips = hasNleClips ? clips.map(c => {
@@ -422,6 +403,31 @@ app.post('/processar-video', (req, res) => {
     const shouldUseNle = normalizedClips.length > 1 || 
         normalizedClips.some(c => c.transitionIn || c.transitionOut) ||
         (normalizedClips.length === 1 && (normalizedClips[0].filename && normalizedClips[0].filename !== videoPath));
+
+    const hasCustomAspect = aspectRatio && aspectRatio !== 'original';
+    const isPureCopy = !shouldUseNle && !hasCustomAspect && (outputMode === 'original' || outputMode === 'video') && preserveAudio && !muteAudio;
+
+    const origExt = (path.extname(videoPath).slice(1) || 'mp4').toLowerCase();
+    // Se for áudio -> mp3; se for cópia direta de fluxo (-c copy) -> extensão original; se for reencodificação (H.264/AAC) -> mp4
+    const ext = outputMode === 'audio' ? 'mp3' : (isPureCopy ? origExt : 'mp4');
+
+    // Sanitiza nome personalizado (se fornecido) ou gera nome baseado no vídeo e intervalo
+    let safeBaseName = '';
+    if (typeof customName === 'string' && customName.trim()) {
+        safeBaseName = customName.trim()
+            .replace(/[\\/:*?"<>|\x00-\x1F]/g, '_')
+            .replace(/\.[^.]+$/, '')
+            .substring(0, 100);
+    }
+    const outputFilename = safeBaseName 
+        ? `${safeBaseName}.${ext}` 
+        : `corte_${path.parse(videoPath).name}_${Math.round(start * 1000)}-${Math.round(end * 1000)}.${ext}`;
+    const outputFilePath = path.join(OUTPUT_DIR, outputFilename);
+
+    const inputPath = IS_RUNNING_IN_WSL ? inputFilePath : toWsl(inputFilePath);
+    const outputPath = IS_RUNNING_IN_WSL ? outputFilePath : toWsl(outputFilePath);
+
+    let ffmpegArgs = [];
 
     if (shouldUseNle) {
         // Renderização Multipistas / NLE via -filter_complex
