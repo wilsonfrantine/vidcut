@@ -31,11 +31,14 @@ Para recuperar rapidamente o contexto completo deste projeto, leia nesta ordem:
 
 ---
 
-## 🎯 Próximos Passos Prioritários
+## 🎯 Próximos Passos Prioritários e Issues Abertos
 
-1. **Progresso Real da Renderização e Download (SSE / WebSockets)**:
+1. **[Issue Prioritário] Otimização da Detecção de Corte Rápido / Stream Copy (`-c copy`)**:
+   - **Problema**: A exportação continua acionando o pipeline de reencodamento completo (`-filter_complex` com x264/AAC) em situações onde a opção selecionada é "Original (Sem conversão)" e o usuário apenas realizou cortes simples (um clipe único ou trilhas alinhadas sem sobreposição, sem múltiplos clipes ativos na mesma trilha, e sem efeitos de fade in/out no vídeo ou áudio).
+   - **Ação necessária**: Refinar no front-end (`script.js` em `processVideo()` e `shouldUseNle`) e no backend (`server.js` em `shouldUseNle` / `isPureCopy`) a condição que despacha para o corte clássico rápido (`-c copy`), garantindo que se houver apenas 1 clipe efetivo na timeline e nenhum fade ativo, o corte rápido seja preservado imediatamente sem invocar reencodamento.
+2. **Progresso Real da Renderização e Download (SSE / WebSockets)**:
    - Capturar o progresso do FFmpeg (`-progress`) e yt-dlp e exibir barra percentual ao usuário.
-2. **Manipulação Livre na Timeline (Drag & Drop)**:
+3. **Manipulação Livre na Timeline (Drag & Drop)**:
    - Permitir mover clipes livremente na régua temporal, incluindo gaps e deslocamentos.
-3. **Transições Automáticas**:
+4. **Transições Automáticas**:
    - Implementar `xfade` e `acrossfade` para transições suaves entre clipes sobrepostos.

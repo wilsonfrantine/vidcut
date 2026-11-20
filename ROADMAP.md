@@ -59,6 +59,8 @@ Transformação do VidCut de cortador minimalista em um **editor de vídeo não-
 - [x] **Corte Rápido Sem Conversão (`-c copy`)**:
   - Preserva contêiner original (ex: `.webm` para WebM, `.mp4` para MP4).
   - Suporta exportação sem áudio (`-an`) mantendo stream copy do vídeo.
+- [ ] **[Issue Aberto] Garantir fallback para `-c copy` quando a timeline NLE tiver apenas 1 clipe sem fades**:
+  - Atualmente, mesmo escolhendo "Original (Sem conversão)", se a requisição enviar o array `tracks`, o backend aciona `-filter_complex`. Deve detectar quando há apenas 1 clipe único sem efeitos para usar `-c copy` instantâneo.
 - [x] **Renderização com Reencodamento (Multi-track / Efeitos / Aspect Ratio)**:
   - Geração dinâmica de `-filter_complex` com `trim`, `atrim`, `setpts`, `asetpts`, `fade`, `afade`, `concat`, `scale` e `crop`.
   - Força encapsulamento `.mp4` (H.264 + AAC) para máxima compatibilidade web/player.
