@@ -9,7 +9,7 @@
 
 Para recuperar rapidamente o contexto completo deste projeto, leia nesta ordem:
 1. [README.md](file:///home/wilson/github/vidcut/README.md): Visão geral do produto e lista de recursos atualizados (incluindo o NLE multipistas).
-2. [ROADMAP_2026-11-03.md](file:///home/wilson/github/vidcut/ROADMAP_2026-11-03.md): Status detalhado de cada fase e lista do que já foi entregue vs. pendências imediatas.
+2. [ROADMAP.md](file:///home/wilson/github/vidcut/ROADMAP.md): Status detalhado de cada fase e lista do que já foi entregue vs. pendências imediatas.
 3. [test/server.test.js](file:///home/wilson/github/vidcut/test/server.test.js): Suíte de testes automatizados com 11 cenários cobrindo segurança, NLE, exportação sem áudio (`-an`), isolamento de MP3 e stream copy (`-c copy`).
 4. [server.js](file:///home/wilson/github/vidcut/server.js): Backend Node.js que orquestra os comandos FFmpeg e a integração com yt-dlp.
 
@@ -23,7 +23,7 @@ Para recuperar rapidamente o contexto completo deste projeto, leia nesta ordem:
    - Implementado suporte estrito a **Somente Áudio (MP3)**: saída de áudio puro via `libmp3lame` com `-vn`.
    - Adicionados testes automatizados cobrindo cada um desses cenários (todos passando com `npm test`).
 2. **Atualização da Documentação**:
-   - `README.md` e `ROADMAP_2026-11-03.md` atualizados refletindo as capacidades de NLE multipistas e status de entrega.
+   - `README.md` e `ROADMAP.md` atualizados refletindo as capacidades de NLE multipistas e status de entrega.
    - Commits enviados respeitando a política de privacidade de email do GitHub (`65643259+wilsonfrantine@users.noreply.github.com`).
 3. **Criação de Hábitos e Skills Globais**:
    - Criada a skill `session-closing` e a skill `session-initiation` no diretório global `~/.gemini/skills/`.
