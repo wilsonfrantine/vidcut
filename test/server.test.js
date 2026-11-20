@@ -161,6 +161,79 @@ test('Exportação: WebM em corte puro sem conversão preserva .webm (-c copy)',
         const data = JSON.parse(res.body);
         assert.ok(data.outputFile);
         assert.match(data.outputFile, /\.webm$/i);
+
+        // Verifica streams do arquivo gerado
+        const outProbe = execSync(`ffprobe -v error -show_entries stream=codec_type -of json "${path.join(__dirname, '..', 'output', data.outputFile)}"`).toString();
+        const probeData = JSON.parse(outProbe);
+        const types = probeData.streams.map(s => s.codec_type);
+        assert.ok(types.includes('video'), 'Deve conter fluxo de vídeo');
+        assert.ok(types.includes('audio'), 'Deve conter fluxo de áudio');
+    } finally {
+        if (fs.existsSync(testWebmPath)) fs.unlinkSync(testWebmPath);
+    }
+});
+
+test('Exportação: Áudio mutado (muteAudio: true) devolve apenas o vídeo (sem faixa de áudio)', async () => {
+    const testWebmName = 'test_fixture_mute.webm';
+    const testWebmPath = path.join(__dirname, '..', 'videos', testWebmName);
+    const { execSync } = require('child_process');
+    execSync(`ffmpeg -y -f lavfi -i testsrc=duration=2:size=160x120:rate=15 -f lavfi -i sine=frequency=800:duration=2 -c:v libvpx-vp9 -c:a libopus "${testWebmPath}"`);
+
+    try {
+        const res = await request('/processar-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                videoPath: testWebmName,
+                start: 0.2,
+                end: 1.5,
+                outputMode: 'original',
+                muteAudio: true
+            })
+        });
+        assert.equal(res.status, 200);
+        const data = JSON.parse(res.body);
+        assert.ok(data.outputFile);
+        assert.match(data.outputFile, /\.webm$/i);
+
+        const outProbe = execSync(`ffprobe -v error -show_entries stream=codec_type -of json "${path.join(__dirname, '..', 'output', data.outputFile)}"`).toString();
+        const probeData = JSON.parse(outProbe);
+        const types = probeData.streams.map(s => s.codec_type);
+        assert.ok(types.includes('video'), 'Deve conter fluxo de vídeo');
+        assert.ok(!types.includes('audio'), 'Não deve conter nenhum fluxo de áudio');
+    } finally {
+        if (fs.existsSync(testWebmPath)) fs.unlinkSync(testWebmPath);
+    }
+});
+
+test('Exportação: Somente áudio (outputMode: audio) devolve apenas áudio em MP3', async () => {
+    const testWebmName = 'test_fixture_audio_only.webm';
+    const testWebmPath = path.join(__dirname, '..', 'videos', testWebmName);
+    const { execSync } = require('child_process');
+    execSync(`ffmpeg -y -f lavfi -i testsrc=duration=2:size=160x120:rate=15 -f lavfi -i sine=frequency=800:duration=2 -c:v libvpx-vp9 -c:a libopus "${testWebmPath}"`);
+
+    try {
+        const res = await request('/processar-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                videoPath: testWebmName,
+                start: 0.2,
+                end: 1.5,
+                outputMode: 'audio'
+            })
+        });
+        assert.equal(res.status, 200);
+        const data = JSON.parse(res.body);
+        assert.ok(data.outputFile);
+        assert.match(data.outputFile, /\.mp3$/i);
+
+        const outProbe = execSync(`ffprobe -v error -show_entries stream=codec_type,codec_name -of json "${path.join(__dirname, '..', 'output', data.outputFile)}"`).toString();
+        const probeData = JSON.parse(outProbe);
+        const types = probeData.streams.map(s => s.codec_type);
+        assert.ok(types.includes('audio'), 'Deve conter fluxo de áudio');
+        assert.ok(!types.includes('video'), 'Não deve conter fluxo de vídeo');
+        assert.equal(probeData.streams[0].codec_name, 'mp3');
     } finally {
         if (fs.existsSync(testWebmPath)) fs.unlinkSync(testWebmPath);
     }

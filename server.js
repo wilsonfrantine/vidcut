@@ -405,7 +405,7 @@ app.post('/processar-video', (req, res) => {
         (normalizedClips.length === 1 && (normalizedClips[0].filename && normalizedClips[0].filename !== videoPath));
 
     const hasCustomAspect = aspectRatio && aspectRatio !== 'original';
-    const isPureCopy = !shouldUseNle && !hasCustomAspect && (outputMode === 'original' || outputMode === 'video') && preserveAudio && !muteAudio;
+    const isPureCopy = !shouldUseNle && !hasCustomAspect && (outputMode === 'original' || outputMode === 'video');
 
     const origExt = (path.extname(videoPath).slice(1) || 'mp4').toLowerCase();
     // Se for áudio -> mp3; se for cópia direta de fluxo (-c copy) -> extensão original; se for reencodificação (H.264/AAC) -> mp4
@@ -534,13 +534,19 @@ app.post('/processar-video', (req, res) => {
     } else {
         // Modo Clássico (Corte de Único Trecho)
         const hasCustomAspect = aspectRatio && aspectRatio !== 'original';
-        const isOriginalCopy = (outputMode === 'original' || outputMode === 'video') && preserveAudio && !muteAudio && !hasCustomAspect;
-        if (isOriginalCopy) {
-            ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-c', 'copy', '-map', '0'];
-        } else if (outputMode === 'audio') {
+        const isOriginalCopy = (outputMode === 'original' || outputMode === 'video') && !hasCustomAspect;
+        const isMuted = muteAudio === true || !preserveAudio;
+
+        if (outputMode === 'audio') {
             ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-vn', '-map', '0:a:0', '-c:a', 'libmp3lame', '-q:a', '2'];
+        } else if (isOriginalCopy) {
+            if (isMuted) {
+                ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-map', '0:v:0', '-c:v', 'copy', '-an'];
+            } else {
+                ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-c', 'copy', '-map', '0'];
+            }
         } else {
-            ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3)];
+            ffmpegArgs = ['-y', '-ss', start.toFixed(3), '-i', inputPath, '-t', duration.toFixed(3), '-map', '0:v:0'];
             let vfFilter = '';
             const aspectSizes = {
                 '16:9': [1920, 1080],
@@ -559,15 +565,11 @@ app.post('/processar-video', (req, res) => {
             }
             if (vfFilter) {
                 ffmpegArgs.push('-vf', vfFilter);
-            } else {
-                ffmpegArgs.push('-map', '0:v:0');
             }
-            if (preserveAudio) {
-                ffmpegArgs.push('-map', '0:a?');
-                if (muteAudio === true) ffmpegArgs.push('-af', 'volume=0');
-                ffmpegArgs.push('-c:a', 'aac', '-b:a', '192k');
-            } else {
+            if (isMuted) {
                 ffmpegArgs.push('-an');
+            } else {
+                ffmpegArgs.push('-map', '0:a:0?', '-c:a', 'aac', '-b:a', '192k');
             }
             ffmpegArgs.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-movflags', '+faststart');
         }
@@ -588,14 +590,15 @@ app.post('/processar-video', (req, res) => {
         try {
             fileSize = fs.statSync(outputFilePath).size;
         } catch (_) {}
+        const isMuted = muteAudio === true || !preserveAudio;
         res.status(200).json({ 
             message: 'Corte processado com sucesso!', 
             outputFile: outputFilename, 
             outputMode, 
             duration,
             fileSize,
-            audioIncluded: outputMode === 'audio' || preserveAudio, 
-            audioMuted: outputMode === 'video' && preserveAudio && muteAudio === true 
+            audioIncluded: outputMode === 'audio' || (preserveAudio && !isMuted), 
+            audioMuted: isMuted
         });
     });
 });

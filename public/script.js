@@ -330,6 +330,10 @@ const VidCutApp = {
             const hasMultipleClipsOrTransitions = formattedClips.length > 1 ||
                 formattedClips.some(c => c.transitionIn || c.transitionOut);
 
+            const isMuted = this.state.audioMuted || !this.state.includeAudio || 
+                (this.state.tracks && this.state.tracks.filter(t => t.type === 'audio').length > 0 && 
+                 this.state.tracks.filter(t => t.type === 'audio').every(t => t.muted));
+
             const response = await fetch('/processar-video', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -337,11 +341,11 @@ const VidCutApp = {
                     videoPath: this.state.videoPath,
                     start: this.state.start,
                     end: this.state.end,
-                    includeAudio: this.state.includeAudio,
-                    muteAudio: this.state.audioMuted,
+                    includeAudio: !isMuted,
+                    muteAudio: isMuted,
                     outputMode: this.state.outputMode,
                     customName: this.state.customName,
-                    aspectRatio: this.state.canvasAspectRatio || '16:9',
+                    aspectRatio: this.state.canvasAspectRatio || 'original',
                     fitMode: this.state.canvasFitMode || 'cover',
                     clips: hasMultipleClipsOrTransitions ? formattedClips : undefined
                 })
@@ -2624,12 +2628,15 @@ const VidCutApp = {
         const outputFilename = `${baseName}.${ext}`;
 
         let cmd = '';
+        const isMuted = this.state.audioMuted || !this.state.includeAudio;
         if (this.state.outputMode === 'audio') {
             cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -vn -map 0:a:0 -c:a libmp3lame -q:a 2 "${outputFilename}"`;
-        } else if (this.state.outputMode === 'original' && this.state.includeAudio && !this.state.audioMuted) {
+        } else if (this.state.outputMode === 'original' && !isMuted) {
             cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -c copy -map 0 "${outputFilename}"`;
+        } else if (this.state.outputMode === 'original' && isMuted) {
+            cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -map 0:v:0 -c:v copy -an "${outputFilename}"`;
         } else {
-            cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -map 0:v:0 ${this.state.includeAudio ? `-map 0:a? ${this.state.audioMuted ? '-af volume=0 ' : ''}-c:a aac -b:a 192k` : '-an'} -c:v libx264 -preset veryfast -crf 18 -movflags +faststart "${outputFilename}"`;
+            cmd = `ffmpeg -y -ss ${this.state.start.toFixed(3)} -i "${this.state.videoPath}" -t ${duration.toFixed(3)} -map 0:v:0 ${isMuted ? '-an' : '-map 0:a:0? -c:a aac -b:a 192k'} -c:v libx264 -preset veryfast -crf 18 -movflags +faststart "${outputFilename}"`;
         }
         
     },
