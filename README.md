@@ -7,10 +7,25 @@ O aplicativo roda localmente com um servidor Node.js e oferece uma interface web
 
 ## ✨ Recursos
 
-- Corte por tempo de início e fim, com linha do tempo e prévia.
-- Exportação em vídeo (MP4) ou somente áudio (MP3), com opção de silenciar ou remover o áudio.
-- Envio de arquivo local ou download a partir de um link (via yt-dlp).
-- Processamento local com FFmpeg, sem depender de serviços externos.
+- **Edição em Linha do Tempo Multipistas (NLE)**:
+  - Adicione múltiplos vídeos e áudios na mesma sessão.
+  - Trilhas empilhadas de vídeo e áudio com controle individual de visibilidade e silenciamento (mute).
+  - Ferramenta de divisão de clipe (Split - tecla `C`) e ajuste de início/fim (Trim / Handles).
+  - Remoção de clipes indesejados (`Del` / `Backspace`).
+  - Efeitos de Fade In e Fade Out em vídeo e áudio por clipe.
+  - Seleção de proporção de tela do projeto: Original, 16:9 (YouTube), 9:16 (Shorts/TikTok/Reels), 1:1 e 4:5.
+- **Exportação Flexível e Otimizada**:
+  - **Corte rápido sem conversão (`-c copy`)**: ultra rápido e sem perda de qualidade quando não há efeitos/filtros aplicados, preservando o contêiner original (`.mp4`, `.webm`, etc.).
+  - **Renderização com filtros (`filter_complex`)**: reencodamento automático com padronização para MP4 (H.264/AAC) em múltiplos clipes, fades ou conversão de proporção.
+  - **Vídeo sem áudio**: opção de silenciar o áudio global ou faixas individuais, gerando vídeo limpo sem trilha sonora (`-an`).
+  - **Somente Áudio (MP3)**: extração direta da trilha sonora em MP3 com qualidade ótima.
+- **Fontes de Vídeo**:
+  - Envio de arquivo local (arraste e solte ou seleção).
+  - Download a partir de link da web (YouTube e plataformas compatíveis via yt-dlp).
+  - Busca integrada de vídeos diretamente na tela inicial ou pelo modal Spotlight (atalho `S` no Editor).
+  - Suporte a autenticação de cookies (`cookies.txt` ou script auxiliar) para contornar desafios antibot do YouTube.
+- **Processamento 100% Local**:
+  - Executado na sua própria máquina usando FFmpeg e yt-dlp, garantindo privacidade total.
 
 ---
 
